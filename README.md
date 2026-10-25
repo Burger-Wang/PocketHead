@@ -8,12 +8,12 @@
 
 | 功能 | 状态 |
 | --- | --- |
-| `CMHeadphoneMotionManager` 读取 AirPods 头部姿态 | 已实现；待兼容 AirPods 真机验证 |
+| `CMHeadphoneMotionManager` 读取 AirPods 头部姿态 | 已实现；头部姿态数据已验证，更多型号兼容性待测 |
 | 前方校准；校准时检查姿态时效、头部静止和云台姿态 | 已实现 |
 | 头部朝向映射到云台水平与俯仰；灵敏度、死区、平滑、限速 | 已实现 |
 | 快速、标准、轻柔预设 | 已实现 |
 | 模拟头部与模拟云台，供模拟器和无相机环境验证 | 已实现 |
-| 手动云台摇杆、方向微调、松手归零与头追接管 | 已实现；当前驱动模拟云台 |
+| 头追方向圆盘：显示头部方向与云台跟随位置 | 已实现；圆盘只读 |
 | 头部或云台姿态中断、AirPods 连接代际变化、切后台时停止头追 | 已实现 |
 | Pocket 4 Pro 发现、连接、姿态回读与真实云台控制 | 待接入 |
 | 云台回中、180° 旋转、录像控制 | 待真实相机链路验证后接入 |
@@ -21,7 +21,7 @@
 ## 运行与配置
 
 1. 用 Xcode 打开 `PocketHead.xcodeproj`，选择 `PocketHead` scheme。
-2. 模拟器可直接运行，默认启用「模拟头部动作」。可先拖动「手动云台摇杆」验证方向与松手停止；点击「校准前方并开始」后，再拖动模拟头部角度。头追期间触碰摇杆会接管云台，重新校准才能恢复头追。
+2. 模拟器可直接运行，默认启用「模拟头部动作」。拖动模拟头部角度滑块，可在只读方向圆盘预览头部方向；点击「校准前方并开始」后，圆盘还会显示模拟云台的跟随位置。
 3. 真机运行时，在 target 的 **Signing & Capabilities** 选择自己的 Apple Development Team；如包名冲突，修改 Bundle Identifier。iPhone 需开启开发者模式，并连接支持头部跟踪的 AirPods。首次使用需允许运动与健身权限。参见 Apple 的[真机运行说明](https://developer.apple.com/documentation/xcode/running-your-app-on-simulated-or-physical-devices)与[耳机运动数据说明](https://developer.apple.com/documentation/coremotion/cmheadphonemotionmanager)。
 4. 核心算法测试运行 `swift test`。模拟器编译可运行：
 
@@ -55,6 +55,6 @@
 - `DjiAppleConnectionRun`：发现、BLE 配对与 Wi-Fi 接入。
 - `DjiAppleGimbalControl.freshWaypoint`：取得用于校准的实时云台姿态。
 - `beginNativeHeadTrack` / `updateNativeHeadTrack` / `endNativeHeadTrack`：使用有代际标识的原生目标流发送与停止头追。
-- 实体控制前补齐 OpenCine 要求的相机状态、视频新鲜度、手动摇杆接管及断线保护。
+- 实体控制前补齐 OpenCine 要求的相机状态、视频新鲜度、外部控制接管及断线保护。
 
 OpenPocketCine 文档明确区分了小幅原生命令探测与持续头追体验验证。真实 4 Pro 接入后，要先做小角度、低速、随时可停的台架测试，再测阶跃和往复转头的响应、过冲、抖动、停机时间，以及视频帧率和控制 ACK；不要把模拟器运行视为硬件验证。

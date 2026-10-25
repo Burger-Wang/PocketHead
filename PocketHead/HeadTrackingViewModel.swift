@@ -10,13 +10,9 @@ final class HeadTrackingViewModel: ObservableObject {
     @Published private(set) var targetPose = GimbalPose(panDegrees: 0, tiltDegrees: 0)
     @Published private(set) var look = LookAngles.zero
     @Published private(set) var preset: FollowPreset? = .standard
-    @Published private(set) var manualActive = false
-    @Published private(set) var manualStick = ManualStick.zero
-    @Published var manualSensitivity = 0.7
 
     @Published var demoHead = false {
         didSet {
-            releaseManualControl()
             stopTracking()
             demoYawDegrees = 0
             demoPitchDegrees = 0
@@ -38,9 +34,9 @@ final class HeadTrackingViewModel: ObservableObject {
     private var engine = HeadTrackingEngine(limits: .referencePocket4Pro)
     private let gimbal: any HeadTrackGimbal
     private var pumpTask: Task<Void, Never>?
-    private var nudgeTask: Task<Void, Never>?
     private var previousTick: TimeInterval?
     private var calibratedSensorGeneration: UInt64?
+    private var calibrationCameraPose = GimbalPose(panDegrees: 0, tiltDegrees: 0)
 
     init(gimbal: (any HeadTrackGimbal)? = nil) {
         self.gimbal = gimbal ?? SimulatedGimbal()
@@ -61,6 +57,22 @@ final class HeadTrackingViewModel: ObservableObject {
         gimbal.isSimulation ? "实体相机尚未连接" : "Pocket 4 Pro 云台姿态"
     }
 
+    var displayLook: LookAngles {
+        if tracking { return look }
+        if demoHead {
+            return LookAngles(rightDegrees: demoYawDegrees, upDegrees: demoPitchDegrees)
+        }
+        return .zero
+    }
+
+    var cameraLook: LookAngles? {
+        guard tracking else { return nil }
+        return LookAngles(
+            rightDegrees: cameraPose.panDegrees - calibrationCameraPose.panDegrees,
+            upDegrees: cameraPose.tiltDegrees - calibrationCameraPose.tiltDegrees
+        )
+    }
+
     func start() {
         if !demoHead { sensor.start() }
         guard pumpTask == nil else { return }
@@ -74,7 +86,6 @@ final class HeadTrackingViewModel: ObservableObject {
     }
 
     func suspend() {
-        releaseManualControl()
         stopTracking()
         pumpTask?.cancel()
         pumpTask = nil
@@ -83,7 +94,6 @@ final class HeadTrackingViewModel: ObservableObject {
     }
 
     func calibrate() {
-        releaseManualControl()
         let now = ProcessInfo.processInfo.systemUptime
         guard let head = currentSample(now: now) else {
             statusMessage = "尚无头部姿态数据，无法校准。"
@@ -109,7 +119,9 @@ final class HeadTrackingViewModel: ObservableObject {
             tracking = true
             calibratedSensorGeneration = demoHead ? nil : sensor.streamGeneration
             look = .zero
+            cameraPose = camera.pose
             targetPose = camera.pose
+            calibrationCameraPose = camera.pose
             statusMessage = "前方已校准，头追运行中。"
         } catch CalibrationError.movingHead {
             statusMessage = "请保持头部静止，再校准前方。"
@@ -128,50 +140,6 @@ final class HeadTrackingViewModel: ObservableObject {
         engine.reset()
         gimbal.endHeadTracking()
         look = .zero
-    }
-
-    func moveManualStick(x: Double, y: Double) {
-        nudgeTask?.cancel()
-        nudgeTask = nil
-        beginManualControlIfNeeded()
-        guard manualActive else { return }
-        manualStick = ManualStick(x: x, y: y)
-    }
-
-    func releaseManualControl() {
-        nudgeTask?.cancel()
-        nudgeTask = nil
-        guard manualActive else { return }
-        manualStick = .zero
-        gimbal.endManualControl()
-        manualActive = false
-        statusMessage = "手动控制已停止。重新校准可恢复头追。"
-    }
-
-    /// A short, bounded pulse is the button and VoiceOver alternative to dragging.
-    func nudgeManual(x: Double, y: Double) {
-        nudgeTask?.cancel()
-        nudgeTask = nil
-        beginManualControlIfNeeded()
-        guard manualActive else { return }
-        manualStick = ManualStick(x: x * 0.5, y: y * 0.5)
-        nudgeTask = Task { [weak self] in
-            try? await Task.sleep(for: .milliseconds(160))
-            guard !Task.isCancelled else { return }
-            self?.releaseManualControl()
-        }
-    }
-
-    private func beginManualControlIfNeeded() {
-        guard !manualActive else { return }
-        stopTracking()
-        guard gimbal.beginManualControl() else {
-            statusMessage = "云台尚未就绪，无法使用手动摇杆。"
-            return
-        }
-        manualStick = .zero
-        manualActive = true
-        statusMessage = "手动控制中；头追已暂停，松手即停。"
     }
 
     func applyPreset(_ newPreset: FollowPreset) {
@@ -214,10 +182,6 @@ final class HeadTrackingViewModel: ObservableObject {
         let now = ProcessInfo.processInfo.systemUptime
         let elapsed = max(0, min(now - (previousTick ?? now), 0.25))
         previousTick = now
-        if manualActive && !gimbal.updateManualStick(manualStick, sensitivity: manualSensitivity) {
-            releaseManualControl()
-            statusMessage = "摇杆控制中断，云台已停止。"
-        }
         gimbal.advance(elapsed: elapsed, now: now)
         if let observation = gimbal.observation {
             cameraPose = observation.pose
