@@ -14,7 +14,6 @@
 		B00000000000000000000005 /* SimulatedGimbal.swift in Sources */ = {isa = PBXBuildFile; fileRef = C00000000000000000000005 /* SimulatedGimbal.swift */; };
 		B00000000000000000000006 /* HeadTracking.swift in Sources */ = {isa = PBXBuildFile; fileRef = C00000000000000000000006 /* HeadTracking.swift */; };
 		B00000000000000000000007 /* HeadTrackGimbal.swift in Sources */ = {isa = PBXBuildFile; fileRef = C00000000000000000000009 /* HeadTrackGimbal.swift */; };
-		B00000000000000000000008 /* ManualControl.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0000000000000000000000A /* ManualControl.swift */; };
 		B00000000000000000000009 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = C0000000000000000000000B /* Assets.xcassets */; };
 /* End PBXBuildFile section */
 
@@ -28,7 +27,6 @@
 		C00000000000000000000007 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		C00000000000000000000008 /* PocketHead.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = PocketHead.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		C00000000000000000000009 /* HeadTrackGimbal.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HeadTrackGimbal.swift; sourceTree = "<group>"; };
-		C0000000000000000000000A /* ManualControl.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ManualControl.swift; sourceTree = "<group>"; };
 		C0000000000000000000000B /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
@@ -79,7 +77,6 @@
 			isa = PBXGroup;
 			children = (
 				C00000000000000000000006 /* HeadTracking.swift */,
-				C0000000000000000000000A /* ManualControl.swift */,
 			);
 			path = PocketHeadCore;
 			sourceTree = "<group>";
@@ -168,7 +165,6 @@
 				B00000000000000000000007 /* HeadTrackGimbal.swift in Sources */,
 				B00000000000000000000005 /* SimulatedGimbal.swift in Sources */,
 				B00000000000000000000006 /* HeadTracking.swift in Sources */,
-				B00000000000000000000008 /* ManualControl.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

@@ -18,11 +18,11 @@ struct ContentView: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: 18) {
                     introduction
-                    HStack(spacing: 12) {
+                    HStack(alignment: .top, spacing: 12) {
                         sensorCard
                         cameraCard
                     }
-                    manualCard
+                    directionCard
                     trackingCard
                     tuningCard
                     demoCard
@@ -69,7 +69,6 @@ struct ContentView: View {
 
     private var sensorCard: some View {
         SensorCard(sensor: model.sensor, demoHead: model.demoHead)
-            .frame(maxWidth: .infinity, minHeight: 136, alignment: .topLeading)
     }
 
     private var cameraCard: some View {
@@ -84,7 +83,7 @@ struct ContentView: View {
                 .font(.caption)
                 .foregroundStyle(Palette.muted)
         }
-        .frame(maxWidth: .infinity, minHeight: 136, alignment: .topLeading)
+        .frame(maxWidth: .infinity, alignment: .topLeading)
         .cardStyle()
     }
 
@@ -92,11 +91,11 @@ struct ContentView: View {
         VStack(alignment: .leading, spacing: 18) {
             HStack(alignment: .top, spacing: 12) {
                 Circle()
-                    .fill(model.tracking || model.manualActive ? Palette.accent : Palette.warning)
+                    .fill(model.tracking ? Palette.accent : Palette.warning)
                     .frame(width: 9, height: 9)
                     .padding(.top, 5)
                 VStack(alignment: .leading, spacing: 5) {
-                    Text(model.manualActive ? "手动控制中" : model.tracking ? "头追运行中" : "等待校准")
+                    Text(model.tracking ? "头追运行中" : "等待校准")
                         .font(.headline)
                     Text(model.statusMessage)
                         .font(.subheadline)
@@ -104,11 +103,6 @@ struct ContentView: View {
                         .fixedSize(horizontal: false, vertical: true)
                 }
                 Spacer(minLength: 0)
-            }
-
-            HStack(spacing: 10) {
-                angleTile(title: "头部向右", value: model.look.rightDegrees, systemImage: "arrow.left.and.right")
-                angleTile(title: "头部向上", value: model.look.upDegrees, systemImage: "arrow.up.and.down")
             }
 
             HStack(spacing: 10) {
@@ -142,70 +136,54 @@ struct ContentView: View {
         .cardStyle()
     }
 
-    private var manualCard: some View {
+    private var directionCard: some View {
         VStack(alignment: .leading, spacing: 14) {
             HStack(alignment: .firstTextBaseline) {
-                Text("手动云台摇杆")
+                Text("头追方向")
                     .font(.headline)
                 Spacer()
-                Text(model.manualActive ? "控制中" : "松手即停")
+                Text(model.tracking ? "实时跟随" : model.demoHead ? "模拟姿态预览" : "等待校准")
                     .font(.caption.weight(.semibold))
-                    .foregroundStyle(model.manualActive ? Palette.accent : Palette.muted)
+                    .foregroundStyle(model.tracking ? Palette.accent : Palette.muted)
             }
-            Text("按住圆盘拖动：向右转镜头，向上抬镜头。操作摇杆会立即退出头追。")
+            Text("实心点随头部转动移动；校准后空心点显示云台跟随位置。此圆盘仅显示姿态，不可拖动。")
                 .font(.subheadline)
                 .foregroundStyle(Palette.muted)
                 .fixedSize(horizontal: false, vertical: true)
 
-            HStack {
-                Spacer()
-                ManualJoystickPad(stick: model.manualStick) { x, y in
-                    model.moveManualStick(x: x, y: y)
-                } onRelease: {
-                    model.releaseManualControl()
+            HStack(spacing: 15) {
+                HeadDirectionDisplay(head: model.displayLook, camera: model.cameraLook)
+                    .frame(width: 166, height: 166)
+                VStack(alignment: .leading, spacing: 15) {
+                    directionMetric("向右", value: model.displayLook.rightDegrees)
+                    directionMetric("向上", value: model.displayLook.upDegrees)
+                    HStack(spacing: 5) {
+                        Circle()
+                            .stroke(Palette.warning, lineWidth: 2)
+                            .frame(width: 10, height: 10)
+                        Text("云台跟随")
+                            .font(.caption)
+                            .foregroundStyle(Palette.muted)
+                    }
+                    .opacity(model.cameraLook == nil ? 0.45 : 1)
                 }
-                Spacer()
+                .frame(maxWidth: .infinity, alignment: .leading)
             }
-
-            Text(String(format: "水平 %+.0f%%  ·  俯仰 %+.0f%%", model.manualStick.x * 100, model.manualStick.y * 100))
-                .font(.caption.monospacedDigit())
-                .foregroundStyle(Palette.muted)
-                .frame(maxWidth: .infinity)
-
-            HStack(spacing: 10) {
-                directionButton("向左微调", symbol: "arrow.left", x: -1, y: 0)
-                directionButton("向上微调", symbol: "arrow.up", x: 0, y: 1)
-                directionButton("向下微调", symbol: "arrow.down", x: 0, y: -1)
-                directionButton("向右微调", symbol: "arrow.right", x: 1, y: 0)
-            }
-
-            settingSlider(
-                "摇杆速度",
-                value: $model.manualSensitivity,
-                range: 0.2...1,
-                display: String(format: "%.0f%%", model.manualSensitivity * 100)
-            )
         }
         .cardStyle()
     }
 
-    private func directionButton(_ title: String, symbol: String, x: Double, y: Double) -> some View {
-        Button {
-            model.nudgeManual(x: x, y: y)
-        } label: {
-            Image(systemName: symbol)
-                .font(.system(size: 17, weight: .semibold))
-                .frame(maxWidth: .infinity)
-                .frame(height: 44)
-                .background(Color.white.opacity(0.06), in: RoundedRectangle(cornerRadius: 11))
-                .overlay {
-                    RoundedRectangle(cornerRadius: 11)
-                        .stroke(Palette.border, lineWidth: 1)
-                }
+    private func directionMetric(_ title: String, value: Double) -> some View {
+        VStack(alignment: .leading, spacing: 3) {
+            Text(title)
+                .font(.caption)
+                .foregroundStyle(Palette.muted)
+            Text(String(format: "%+.1f°", value))
+                .font(.system(size: 24, weight: .medium, design: .rounded))
+                .monospacedDigit()
+                .lineLimit(1)
+                .minimumScaleFactor(0.7)
         }
-        .buttonStyle(.plain)
-        .accessibilityLabel(title)
-        .accessibilityHint("点按后短暂移动云台并自动停止")
     }
 
     private func angleTile(title: String, value: Double, systemImage: String) -> some View {
@@ -294,16 +272,15 @@ struct ContentView: View {
     }
 }
 
-private struct ManualJoystickPad: View {
-    let stick: ManualStick
-    let onMove: (Double, Double) -> Void
-    let onRelease: () -> Void
-    @GestureState private var touching = false
+private struct HeadDirectionDisplay: View {
+    let head: LookAngles
+    let camera: LookAngles?
 
     var body: some View {
         GeometryReader { geometry in
             let side = min(geometry.size.width, geometry.size.height)
-            let reach = side / 2 - 31
+            let reach = side / 2 - 23
+            let headOffset = markerOffset(for: head, reach: reach)
 
             ZStack {
                 Circle()
@@ -312,48 +289,55 @@ private struct ManualJoystickPad: View {
                         Circle().stroke(Palette.border, lineWidth: 1)
                     }
                 Circle()
-                    .stroke(Palette.accent.opacity(0.32), lineWidth: 1)
-                    .padding(27)
+                    .stroke(Palette.accent.opacity(0.25), lineWidth: 1)
+                    .padding(32)
                 Rectangle()
                     .fill(Palette.border)
-                    .frame(width: 1, height: side - 30)
+                    .frame(width: 1, height: side - 18)
                 Rectangle()
                     .fill(Palette.border)
-                    .frame(width: side - 30, height: 1)
+                    .frame(width: side - 18, height: 1)
+                Path { path in
+                    path.move(to: CGPoint(x: side / 2, y: side / 2))
+                    path.addLine(to: CGPoint(x: side / 2 + headOffset.width, y: side / 2 + headOffset.height))
+                }
+                .stroke(Palette.accent.opacity(0.5), style: StrokeStyle(lineWidth: 2, lineCap: .round))
+                if let camera {
+                    Circle()
+                        .stroke(Palette.warning, lineWidth: 3)
+                        .frame(width: 34, height: 34)
+                        .background(Circle().fill(Palette.card))
+                        .offset(markerOffset(for: camera, reach: reach))
+                }
                 Circle()
                     .fill(Palette.accent)
-                    .frame(width: 56, height: 56)
+                    .frame(width: 23, height: 23)
                     .overlay {
-                        Image(systemName: "circle.grid.cross")
-                            .font(.system(size: 22, weight: .medium))
-                            .foregroundStyle(Palette.background)
+                        Circle()
+                            .stroke(Palette.background, lineWidth: 3)
                     }
-                    .shadow(color: Palette.accent.opacity(0.2), radius: 10)
-                    .offset(x: stick.x * reach, y: -stick.y * reach)
+                    .shadow(color: Palette.accent.opacity(0.35), radius: 10)
+                    .offset(headOffset)
             }
             .frame(width: side, height: side)
-            .contentShape(Circle())
-            .highPriorityGesture(
-                DragGesture(minimumDistance: 0)
-                    .updating($touching) { _, state, _ in state = true }
-                    .onChanged { value in
-                        let center = side / 2
-                        onMove(
-                            Double((value.location.x - center) / reach),
-                            Double((center - value.location.y) / reach)
-                        )
-                    }
-                    .onEnded { _ in onRelease() }
-            )
-        }
-        .frame(width: 192, height: 192)
-        .onChange(of: touching) { wasTouching, isTouching in
-            if wasTouching && !isTouching { onRelease() }
         }
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel("手动云台摇杆")
-        .accessibilityValue(String(format: "水平 %+.0f%%，俯仰 %+.0f%%", stick.x * 100, stick.y * 100))
-        .accessibilityHint("按住并拖动，松手停止；也可以使用下方方向按钮微调")
+        .accessibilityLabel("头追方向显示")
+        .accessibilityValue(accessibilityValue)
+        .accessibilityHint("仅显示头部方向和云台跟随位置")
+    }
+
+    private var accessibilityValue: String {
+        let headValue = String(format: "头部向右 %+.1f 度，向上 %+.1f 度", head.rightDegrees, head.upDegrees)
+        guard let camera else { return headValue }
+        return headValue + String(format: "；云台相对校准方向向右 %+.1f 度，向上 %+.1f 度", camera.rightDegrees, camera.upDegrees)
+    }
+
+    private func markerOffset(for look: LookAngles, reach: CGFloat) -> CGSize {
+        let right = max(-1, min(1, look.rightDegrees / 90))
+        let up = max(-1, min(1, look.upDegrees / 45))
+        let scale = max(1, hypot(right, up))
+        return CGSize(width: CGFloat(right / scale) * reach, height: -CGFloat(up / scale) * reach)
     }
 }
 
@@ -375,7 +359,7 @@ private struct SensorCard: View {
                 .foregroundStyle(Palette.muted)
                 .fixedSize(horizontal: false, vertical: true)
         }
-        .frame(maxWidth: .infinity, minHeight: 136, alignment: .topLeading)
+        .frame(maxWidth: .infinity, alignment: .topLeading)
         .cardStyle()
     }
 
