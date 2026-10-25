@@ -1,0 +1,271 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 56;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		B00000000000000000000001 /* PocketHeadApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = C00000000000000000000001 /* PocketHeadApp.swift */; };
+		B00000000000000000000002 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C00000000000000000000002 /* ContentView.swift */; };
+		B00000000000000000000003 /* HeadphoneMotionService.swift in Sources */ = {isa = PBXBuildFile; fileRef = C00000000000000000000003 /* HeadphoneMotionService.swift */; };
+		B00000000000000000000004 /* HeadTrackingViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = C00000000000000000000004 /* HeadTrackingViewModel.swift */; };
+		B00000000000000000000005 /* SimulatedGimbal.swift in Sources */ = {isa = PBXBuildFile; fileRef = C00000000000000000000005 /* SimulatedGimbal.swift */; };
+		B00000000000000000000006 /* HeadTracking.swift in Sources */ = {isa = PBXBuildFile; fileRef = C00000000000000000000006 /* HeadTracking.swift */; };
+		B00000000000000000000007 /* HeadTrackGimbal.swift in Sources */ = {isa = PBXBuildFile; fileRef = C00000000000000000000009 /* HeadTrackGimbal.swift */; };
+		B00000000000000000000008 /* ManualControl.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0000000000000000000000A /* ManualControl.swift */; };
+		B00000000000000000000009 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = C0000000000000000000000B /* Assets.xcassets */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXFileReference section */
+		C00000000000000000000001 /* PocketHeadApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PocketHeadApp.swift; sourceTree = "<group>"; };
+		C00000000000000000000002 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
+		C00000000000000000000003 /* HeadphoneMotionService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HeadphoneMotionService.swift; sourceTree = "<group>"; };
+		C00000000000000000000004 /* HeadTrackingViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HeadTrackingViewModel.swift; sourceTree = "<group>"; };
+		C00000000000000000000005 /* SimulatedGimbal.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SimulatedGimbal.swift; sourceTree = "<group>"; };
+		C00000000000000000000006 /* HeadTracking.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HeadTracking.swift; sourceTree = "<group>"; };
+		C00000000000000000000007 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		C00000000000000000000008 /* PocketHead.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = PocketHead.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		C00000000000000000000009 /* HeadTrackGimbal.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HeadTrackGimbal.swift; sourceTree = "<group>"; };
+		C0000000000000000000000A /* ManualControl.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ManualControl.swift; sourceTree = "<group>"; };
+		C0000000000000000000000B /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		F00000000000000000000003 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		D00000000000000000000001 = {
+			isa = PBXGroup;
+			children = (
+				D00000000000000000000002 /* PocketHead */,
+				D00000000000000000000003 /* Sources */,
+				D00000000000000000000005 /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		D00000000000000000000002 /* PocketHead */ = {
+			isa = PBXGroup;
+			children = (
+				C00000000000000000000001 /* PocketHeadApp.swift */,
+				C00000000000000000000002 /* ContentView.swift */,
+				C00000000000000000000003 /* HeadphoneMotionService.swift */,
+				C00000000000000000000004 /* HeadTrackingViewModel.swift */,
+				C00000000000000000000009 /* HeadTrackGimbal.swift */,
+				C00000000000000000000005 /* SimulatedGimbal.swift */,
+				C0000000000000000000000B /* Assets.xcassets */,
+				C00000000000000000000007 /* Info.plist */,
+			);
+			path = PocketHead;
+			sourceTree = "<group>";
+		};
+		D00000000000000000000003 /* Sources */ = {
+			isa = PBXGroup;
+			children = (
+				D00000000000000000000004 /* PocketHeadCore */,
+			);
+			path = Sources;
+			sourceTree = "<group>";
+		};
+		D00000000000000000000004 /* PocketHeadCore */ = {
+			isa = PBXGroup;
+			children = (
+				C00000000000000000000006 /* HeadTracking.swift */,
+				C0000000000000000000000A /* ManualControl.swift */,
+			);
+			path = PocketHeadCore;
+			sourceTree = "<group>";
+		};
+		D00000000000000000000005 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				C00000000000000000000008 /* PocketHead.app */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		E00000000000000000000001 /* PocketHead */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = J00000000000000000000002 /* Build configuration list for PBXNativeTarget "PocketHead" */;
+			buildPhases = (
+				F00000000000000000000001 /* Sources */,
+				F00000000000000000000003 /* Frameworks */,
+				F00000000000000000000002 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = PocketHead;
+			productName = PocketHead;
+			productReference = C00000000000000000000008 /* PocketHead.app */;
+			productType = "com.apple.product-type.application";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		G00000000000000000000001 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = 1;
+				LastUpgradeCheck = 2710;
+				TargetAttributes = {
+					E00000000000000000000001 = {
+						CreatedOnToolsVersion = 27.1;
+					};
+				};
+			};
+			buildConfigurationList = J00000000000000000000001 /* Build configuration list for PBXProject "PocketHead" */;
+			compatibilityVersion = "Xcode 14.0";
+			developmentRegion = zh_CN;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				zh_CN,
+				en,
+				Base,
+			);
+			mainGroup = D00000000000000000000001;
+			productRefGroup = D00000000000000000000005 /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				E00000000000000000000001 /* PocketHead */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		F00000000000000000000002 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				B00000000000000000000009 /* Assets.xcassets in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		F00000000000000000000001 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				B00000000000000000000001 /* PocketHeadApp.swift in Sources */,
+				B00000000000000000000002 /* ContentView.swift in Sources */,
+				B00000000000000000000003 /* HeadphoneMotionService.swift in Sources */,
+				B00000000000000000000004 /* HeadTrackingViewModel.swift in Sources */,
+				B00000000000000000000007 /* HeadTrackGimbal.swift in Sources */,
+				B00000000000000000000005 /* SimulatedGimbal.swift in Sources */,
+				B00000000000000000000006 /* HeadTracking.swift in Sources */,
+				B00000000000000000000008 /* ManualControl.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin XCBuildConfiguration section */
+		I00000000000000000000001 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ENABLE_MODULES = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				ENABLE_TESTABILITY = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"DEBUG=1",
+					"$(inherited)",
+				);
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				SDKROOT = iphoneos;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				TARGETED_DEVICE_FAMILY = 1;
+			};
+			name = Debug;
+		};
+		I00000000000000000000002 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ENABLE_MODULES = YES;
+				COPY_PHASE_STRIP = YES;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				GCC_OPTIMIZATION_LEVEL = s;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				SDKROOT = iphoneos;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
+				TARGETED_DEVICE_FAMILY = 1;
+			};
+			name = Release;
+		};
+		I00000000000000000000003 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_STYLE = Automatic;
+				DEVELOPMENT_TEAM = GS2B53VPCJ;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = PocketHead/Info.plist;
+				PRODUCT_BUNDLE_IDENTIFIER = cn.burgerwang.pockethead;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_STRICT_CONCURRENCY = minimal;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 1;
+			};
+			name = Debug;
+		};
+		I00000000000000000000004 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_STYLE = Automatic;
+				DEVELOPMENT_TEAM = GS2B53VPCJ;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = PocketHead/Info.plist;
+				PRODUCT_BUNDLE_IDENTIFIER = cn.burgerwang.pockethead;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_STRICT_CONCURRENCY = minimal;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 1;
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		J00000000000000000000001 /* Build configuration list for PBXProject "PocketHead" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				I00000000000000000000001 /* Debug */,
+				I00000000000000000000002 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		J00000000000000000000002 /* Build configuration list for PBXNativeTarget "PocketHead" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				I00000000000000000000003 /* Debug */,
+				I00000000000000000000004 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+/* End XCConfigurationList section */
+	};
+	rootObject = G00000000000000000000001 /* Project object */;
+}
