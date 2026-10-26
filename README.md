@@ -1,4 +1,4 @@
-# Pocket Head
+# Pocket动态追踪
 
 面向 **DJI Osmo Pocket 4 Pro** 的 iOS 头追应用。使用 AirPods 头部姿态控制固定底座上的云台水平和俯仰；不处理车载、自行车或底座自身转动。
 
