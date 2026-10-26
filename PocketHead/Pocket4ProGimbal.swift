@@ -135,7 +135,7 @@ final class Pocket4ProGimbal: HeadTrackGimbal {
             driver.close()
             link = nil
             if case DjiAppleDatalink.DatalinkError.localNetworkDenied = error {
-                phase = .failed("请在 iPhone 设置中允许 Pocket Head 访问本地网络。")
+                phase = .failed("请在 iPhone 设置中允许「Pocket动态追踪」访问本地网络。")
             } else {
                 await connectThroughBluetooth(attempt: attempt, previousError: error)
             }

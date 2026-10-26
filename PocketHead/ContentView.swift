@@ -1,12 +1,28 @@
 import SwiftUI
 
 private enum Palette {
-    static let background = Color(red: 0.045, green: 0.061, blue: 0.075)
-    static let card = Color(red: 0.088, green: 0.111, blue: 0.128)
-    static let border = Color.white.opacity(0.09)
-    static let muted = Color(red: 0.60, green: 0.68, blue: 0.70)
-    static let accent = Color(red: 0.46, green: 0.92, blue: 0.77)
-    static let warning = Color(red: 0.98, green: 0.76, blue: 0.41)
+    static let background = adaptive(light: 0xF4F7F8, dark: 0x0B1013)
+    static let card = adaptive(light: 0xFFFFFF, dark: 0x161C21)
+    static let border = adaptive(light: 0xDCE5E7, dark: 0x2B3034)
+    static let muted = adaptive(light: 0x52636B, dark: 0x99ADB3)
+    static let accent = adaptive(light: 0x087A62, dark: 0x75EBC4)
+    static let warning = adaptive(light: 0xA35E00, dark: 0xFAC269)
+    static let onAccent = adaptive(light: 0xFFFFFF, dark: 0x0B1013)
+    static let controlFill = adaptive(light: 0xF0F4F4, dark: 0x20262A)
+    static let dialFill = adaptive(light: 0xF1F6F5, dark: 0x20272B)
+    static let shadow = adaptive(light: 0xD9E2E4, dark: 0x000000)
+
+    private static func adaptive(light: UInt32, dark: UInt32) -> Color {
+        Color(uiColor: UIColor { traits in
+            let value = traits.userInterfaceStyle == .dark ? dark : light
+            return UIColor(
+                red: CGFloat((value >> 16) & 0xFF) / 255,
+                green: CGFloat((value >> 8) & 0xFF) / 255,
+                blue: CGFloat(value & 0xFF) / 255,
+                alpha: 1
+            )
+        })
+    }
 }
 
 struct ContentView: View {
@@ -66,19 +82,17 @@ struct ContentView: View {
                         .accessibilityLabel("关闭错误提示")
                         .padding(.trailing, 6)
                     }
-                    .shadow(color: .black.opacity(0.25), radius: 12, y: 4)
+                    .shadow(color: Palette.shadow.opacity(0.25), radius: 12, y: 4)
                     .padding(.horizontal, 18)
                     .padding(.top, 8)
                     .padding(.bottom, 4)
                 }
             }
             .background(Palette.background.ignoresSafeArea())
-            .navigationTitle("Pocket Head")
+            .navigationTitle("Pocket动态追踪")
             .navigationBarTitleDisplayMode(.inline)
-            .toolbarColorScheme(.dark, for: .navigationBar)
         }
         .tint(Palette.accent)
-        .preferredColorScheme(.dark)
         .onAppear { model.start() }
         .onDisappear { model.suspend() }
         .onChange(of: scenePhase) { _, phase in
@@ -164,7 +178,7 @@ struct ContentView: View {
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 15)
                     .background(Palette.accent, in: RoundedRectangle(cornerRadius: 14))
-                    .foregroundStyle(Palette.background)
+                    .foregroundStyle(Palette.onAccent)
             }
             .buttonStyle(.plain)
             .accessibilityHint("保持头部静止，将此刻朝向设为正前方")
@@ -258,7 +272,7 @@ struct ContentView: View {
         .cardStyle()
     }
 
-    private func directionMetric(_ title: String, value: Double?, color: Color = .white) -> some View {
+    private func directionMetric(_ title: String, value: Double?, color: Color = .primary) -> some View {
         VStack(alignment: .leading, spacing: 3) {
             Text(title)
                 .font(.caption)
@@ -288,7 +302,7 @@ struct ContentView: View {
                             .frame(maxWidth: .infinity)
                             .padding(.vertical, 10)
                             .background(
-                                model.preset == preset ? Palette.accent.opacity(0.17) : Color.white.opacity(0.04),
+                                model.preset == preset ? Palette.accent.opacity(0.17) : Palette.controlFill,
                                 in: RoundedRectangle(cornerRadius: 10)
                             )
                             .overlay {
@@ -297,7 +311,7 @@ struct ContentView: View {
                             }
                     }
                     .buttonStyle(.plain)
-                    .foregroundStyle(model.preset == preset ? Palette.accent : .white)
+                    .foregroundStyle(model.preset == preset ? Palette.accent : .primary)
                 }
             }
 
@@ -358,7 +372,7 @@ private struct HeadDirectionDisplay: View {
 
             ZStack {
                 Circle()
-                    .fill(Color.white.opacity(0.035))
+                    .fill(Palette.dialFill)
                     .overlay {
                         Circle().stroke(Palette.border, lineWidth: 1)
                     }
@@ -464,6 +478,12 @@ private extension View {
     func cardStyle() -> some View { modifier(CardStyle()) }
 }
 
-#Preview {
+#Preview("浅色") {
     ContentView()
+        .preferredColorScheme(.light)
+}
+
+#Preview("深色") {
+    ContentView()
+        .preferredColorScheme(.dark)
 }
