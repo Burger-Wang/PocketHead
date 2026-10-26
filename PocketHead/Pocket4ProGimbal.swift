@@ -84,6 +84,14 @@ final class Pocket4ProGimbal: HeadTrackGimbal {
         )
     }
 
+    var hasCameraWiFiPath: Bool {
+        #if targetEnvironment(simulator)
+        return false
+        #else
+        return DjiAppleWiFiJoiner.isCameraPathReady()
+        #endif
+    }
+
     func connect() async {
         disconnect()
         #if targetEnvironment(simulator)
