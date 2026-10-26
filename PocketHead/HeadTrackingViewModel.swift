@@ -128,6 +128,12 @@ final class HeadTrackingViewModel: ObservableObject {
         connectTask = Task { [weak self] in await self?.realGimbal.connect() }
     }
 
+    private func connectCameraIfAvailableOnActivation() {
+        guard !demoCamera, !cameraIsConnected, !cameraIsConnecting,
+              realGimbal.hasCameraWiFiPath else { return }
+        connectCamera()
+    }
+
     func disconnectCamera() {
         stopTracking()
         connectTask?.cancel()
@@ -168,6 +174,7 @@ final class HeadTrackingViewModel: ObservableObject {
                 try? await Task.sleep(for: .milliseconds(40))
             }
         }
+        connectCameraIfAvailableOnActivation()
     }
 
     func suspend() {
