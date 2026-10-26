@@ -403,6 +403,18 @@ final class Pocket4ProGimbal: HeadTrackGimbal {
         tiltAtCalibration = nil
     }
 
+    @discardableResult
+    func recenter() -> Bool {
+        endHeadTracking()
+        guard phase == .connected, observation != nil,
+              let link, link.isFlowHealthy else { return false }
+        let admission = DJICommandAdmission(owner: link.commandOwner, isCurrent: { true })
+        if case .queued = link.send(Commands.gimbalRecenter(), admission: admission) {
+            return true
+        }
+        return false
+    }
+
     private func receive(_ frame: Duml.Frame) {
         guard frame.cmdSet == 0x04, frame.cmdId == 0x05,
               let waypoint = GimbalWaypoint.from(
