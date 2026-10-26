@@ -112,6 +112,7 @@ final class HeadTrackingViewModel: ObservableObject {
         }
     }
     var cameraIsConnected: Bool { realGimbal.phase == .connected }
+    var canRecenterCamera: Bool { !demoCamera && realGimbal.observation != nil }
 
     func dismissErrorToast() {
         errorToastRevision &+= 1
@@ -133,6 +134,12 @@ final class HeadTrackingViewModel: ObservableObject {
         connectTask = nil
         realGimbal.disconnect()
         statusMessage = "相机已断开。重新连接后请再次校准。"
+    }
+
+    func recenterCamera() {
+        guard !demoCamera else { return }
+        stopTracking()
+        realGimbal.recenter()
     }
 
     var displayLook: LookAngles {

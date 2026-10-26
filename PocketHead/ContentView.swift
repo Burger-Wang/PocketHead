@@ -12,6 +12,8 @@ private enum Palette {
 struct ContentView: View {
     @Environment(\.scenePhase) private var scenePhase
     @StateObject private var model = HeadTrackingViewModel()
+    @ScaledMetric(relativeTo: .body) private var metricRowHeight: CGFloat = 49
+    @ScaledMetric(relativeTo: .body) private var metricFooterHeight: CGFloat = 44
 
     var body: some View {
         NavigationStack {
@@ -28,7 +30,7 @@ struct ContentView: View {
                     demoCard
                     Text(model.demoCamera
                          ? "当前使用模拟云台，不会控制实体相机。"
-                         : "实体云台需先完成相机 Wi‑Fi 连接，并收到实时姿态后才能校准头追。")
+                         : "")
                         .font(.footnote)
                         .foregroundStyle(Palette.muted)
                         .padding(.horizontal, 4)
@@ -156,6 +158,7 @@ struct ContentView: View {
             Button(action: model.calibrate) {
                 Label(model.tracking ? "重新校准前方" : "校准前方并开始", systemImage: "scope")
                     .font(.subheadline.weight(.semibold))
+                    .contentTransition(.opacity)
                     .lineLimit(1)
                     .minimumScaleFactor(0.8)
                     .frame(maxWidth: .infinity)
@@ -182,8 +185,10 @@ struct ContentView: View {
                 }
                 .buttonStyle(.plain)
                 .foregroundStyle(Palette.warning)
+                .transition(.opacity.combined(with: .scale(scale: 0.92, anchor: .trailing)))
             }
         }
+        .animation(.easeInOut(duration: 0.25), value: model.tracking)
     }
 
     private var directionCard: some View {
@@ -201,33 +206,53 @@ struct ContentView: View {
                 .foregroundStyle(Palette.muted)
                 .fixedSize(horizontal: false, vertical: true)
 
-            HStack(spacing: 15) {
+            HStack(alignment: .top, spacing: 15) {
                 HeadDirectionDisplay(head: model.displayLook, camera: model.cameraLook)
                     .frame(width: 166, height: 166)
-                VStack(alignment: .leading, spacing: 12) {
+                GeometryReader { geometry in
+                    let columnWidth = max(0, (geometry.size.width - 8) / 2)
                     HStack(alignment: .top, spacing: 8) {
-                        VStack(alignment: .leading, spacing: 15) {
+                        VStack(alignment: .leading, spacing: 12) {
                             directionMetric("向右", value: model.displayLook.rightDegrees)
+                                .frame(height: metricRowHeight, alignment: .topLeading)
                             directionMetric("向上", value: model.displayLook.upDegrees)
+                                .frame(height: metricRowHeight, alignment: .topLeading)
+                            HStack(spacing: 5) {
+                                Circle()
+                                    .stroke(Palette.warning, lineWidth: 2)
+                                    .frame(width: 10, height: 10)
+                                Text("云台跟随")
+                                    .font(.caption)
+                                    .foregroundStyle(Palette.muted)
+                                    .lineLimit(1)
+                                    .minimumScaleFactor(0.8)
+                            }
+                            .opacity(model.cameraLook == nil ? 0.45 : 1)
+                            .frame(height: metricFooterHeight, alignment: .leading)
                         }
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        VStack(alignment: .leading, spacing: 15) {
+                        .frame(width: columnWidth, alignment: .leading)
+                        VStack(alignment: .leading, spacing: 12) {
                             directionMetric("云台水平", value: model.cameraPoseAvailable ? model.cameraPose.panDegrees : nil, color: Palette.warning)
+                                .frame(height: metricRowHeight, alignment: .topLeading)
                             directionMetric("云台俯仰", value: model.cameraPoseAvailable ? model.cameraPose.tiltDegrees : nil, color: Palette.warning)
+                                .frame(height: metricRowHeight, alignment: .topLeading)
+                            Button(action: model.recenterCamera) {
+                                Text("云台回中")
+                                    .font(.caption.weight(.semibold))
+                                    .lineLimit(1)
+                                    .minimumScaleFactor(0.8)
+                                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
+                                    .contentShape(Rectangle())
+                            }
+                            .frame(height: metricFooterHeight)
+                            .buttonStyle(.plain)
+                            .foregroundStyle(model.canRecenterCamera ? Palette.accent : Palette.muted)
+                            .disabled(!model.canRecenterCamera)
                         }
-                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .frame(width: columnWidth, alignment: .leading)
                     }
-                    HStack(spacing: 5) {
-                        Circle()
-                            .stroke(Palette.warning, lineWidth: 2)
-                            .frame(width: 10, height: 10)
-                        Text("云台跟随")
-                            .font(.caption)
-                            .foregroundStyle(Palette.muted)
-                    }
-                    .opacity(model.cameraLook == nil ? 0.45 : 1)
                 }
-                .frame(maxWidth: .infinity, alignment: .leading)
+                .frame(height: metricRowHeight * 2 + metricFooterHeight + 24)
             }
         }
         .cardStyle()
