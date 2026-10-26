@@ -1,7 +1,7 @@
 import Foundation
 
-/// The UI uses this while the Pocket 4 Pro transport is being integrated.
-/// The visible "模拟云台" label is always shown when this implementation is active.
+/// Used by the simulator and the explicit demo mode. The UI identifies it as
+/// "模拟云台" so test motion cannot be mistaken for a connected camera.
 @MainActor
 final class SimulatedGimbal: HeadTrackGimbal {
     let isSimulation = true

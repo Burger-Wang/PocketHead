@@ -86,8 +86,8 @@ public struct GimbalLimits: Sendable {
         self.tilt = tilt
     }
 
-    // Values reported by OpenPocketCine for its 4 Pro path. The actual camera
-    // adapter must supply validated bounds from the connected device.
+    // Values reported by OpenPocketCine for its 4 Pro path. They remain
+    // provisional until the connected camera's reach is physically verified.
     public static let referencePocket4Pro = GimbalLimits(pan: -48...225, tilt: -44...70)
 
     public func contains(_ pose: GimbalPose) -> Bool {
