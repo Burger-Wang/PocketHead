@@ -45,7 +45,7 @@ final class Pocket4ProGimbal: HeadTrackGimbal {
 
     var detail: String {
         switch phase {
-        case .disconnected: "先加入相机 Wi‑Fi"
+        case .disconnected: "请先加入相机 Wi‑Fi"
         case .opening: "正在建立控制链路"
         case .scanningBluetooth: "蓝牙扫描中"
         case .pairing: "请在相机上确认配对"
