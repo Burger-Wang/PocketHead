@@ -23,15 +23,52 @@ struct ContentView: View {
                         cameraCard
                     }
                     directionCard
-                    trackingCard
+                    trackingControls
                     tuningCard
                     demoCard
-                    Text("头追使用 AirPods 的头部姿态。模拟云台仅用于验证交互和算法，不会控制实体相机。")
+                    Text(model.demoCamera
+                         ? "当前使用模拟云台，不会控制实体相机。"
+                         : "实体云台需先完成相机 Wi‑Fi 连接，并收到实时姿态后才能校准头追。")
                         .font(.footnote)
                         .foregroundStyle(Palette.muted)
                         .padding(.horizontal, 4)
                 }
                 .padding(18)
+            }
+            .overlay(alignment: .top) {
+                if let message = model.errorToast {
+                    HStack(alignment: .top, spacing: 10) {
+                        Image(systemName: "exclamationmark.circle.fill")
+                            .foregroundStyle(Palette.warning)
+                        Text(message)
+                            .font(.subheadline)
+                            .fixedSize(horizontal: false, vertical: true)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                    }
+                    .padding(.leading, 14)
+                    .padding(.trailing, 58)
+                    .padding(.vertical, 11)
+                    .background(Palette.card, in: RoundedRectangle(cornerRadius: 14))
+                    .overlay {
+                        RoundedRectangle(cornerRadius: 14)
+                            .stroke(Palette.warning.opacity(0.55), lineWidth: 1)
+                    }
+                    .overlay(alignment: .trailing) {
+                        Button(action: model.dismissErrorToast) {
+                            Image(systemName: "xmark")
+                                .font(.caption.weight(.bold))
+                                .frame(width: 44, height: 44)
+                                .contentShape(Rectangle())
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityLabel("关闭错误提示")
+                        .padding(.trailing, 6)
+                    }
+                    .shadow(color: .black.opacity(0.25), radius: 12, y: 4)
+                    .padding(.horizontal, 18)
+                    .padding(.top, 8)
+                    .padding(.bottom, 4)
+                }
             }
             .background(Palette.background.ignoresSafeArea())
             .navigationTitle("Pocket Head")
@@ -73,46 +110,54 @@ struct ContentView: View {
 
     private var cameraCard: some View {
         VStack(alignment: .leading, spacing: 9) {
-            Label("Pocket 4 Pro", systemImage: "camera.fill")
-                .font(.caption.weight(.semibold))
-                .foregroundStyle(Palette.muted)
+            HStack(spacing: 0) {
+                Label("Pocket 4 Pro", systemImage: "camera.fill")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(Palette.muted)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.85)
+                Spacer(minLength: model.demoCamera ? 0 : 38)
+            }
             Text(model.cameraModeTitle)
                 .font(.headline)
-                .foregroundStyle(model.cameraIsSimulated ? Palette.warning : Palette.accent)
+                .foregroundStyle(model.cameraIsConnected ? Palette.accent : Palette.warning)
+                .lineLimit(1)
+                .minimumScaleFactor(0.85)
             Text(model.cameraModeDetail)
                 .font(.caption)
                 .foregroundStyle(Palette.muted)
+                .lineLimit(1)
+                .minimumScaleFactor(0.85)
         }
         .frame(maxWidth: .infinity, alignment: .topLeading)
         .cardStyle()
+        .overlay(alignment: .topTrailing) {
+            if !model.demoCamera {
+                Button(model.cameraIsConnected || model.cameraIsConnecting ? "断开" : "连接") {
+                    if model.cameraIsConnected || model.cameraIsConnecting {
+                        model.disconnectCamera()
+                    } else {
+                        model.connectCamera()
+                    }
+                }
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(model.cameraIsConnected || model.cameraIsConnecting ? Palette.warning : Palette.accent)
+                .buttonStyle(.plain)
+                .frame(width: 44, height: 30)
+                .contentShape(Rectangle())
+                .padding(.top, 11)
+                .padding(.trailing, 10)
+            }
+        }
     }
 
-    private var trackingCard: some View {
-        VStack(alignment: .leading, spacing: 18) {
-            HStack(alignment: .top, spacing: 12) {
-                Circle()
-                    .fill(model.tracking ? Palette.accent : Palette.warning)
-                    .frame(width: 9, height: 9)
-                    .padding(.top, 5)
-                VStack(alignment: .leading, spacing: 5) {
-                    Text(model.tracking ? "头追运行中" : "等待校准")
-                        .font(.headline)
-                    Text(model.statusMessage)
-                        .font(.subheadline)
-                        .foregroundStyle(Palette.muted)
-                        .fixedSize(horizontal: false, vertical: true)
-                }
-                Spacer(minLength: 0)
-            }
-
-            HStack(spacing: 10) {
-                angleTile(title: "云台水平", value: model.cameraPose.panDegrees, systemImage: "rotate.3d")
-                angleTile(title: "云台俯仰", value: model.cameraPose.tiltDegrees, systemImage: "camera.viewfinder")
-            }
-
+    private var trackingControls: some View {
+        HStack(spacing: 12) {
             Button(action: model.calibrate) {
                 Label(model.tracking ? "重新校准前方" : "校准前方并开始", systemImage: "scope")
-                    .font(.headline)
+                    .font(.subheadline.weight(.semibold))
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.8)
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 15)
                     .background(Palette.accent, in: RoundedRectangle(cornerRadius: 14))
@@ -122,18 +167,23 @@ struct ContentView: View {
             .accessibilityHint("保持头部静止，将此刻朝向设为正前方")
 
             if model.tracking {
-                Button {
-                    model.stopTracking()
-                } label: {
+                Button(action: model.stopTracking) {
                     Label("停止头追", systemImage: "stop.circle")
                         .font(.subheadline.weight(.semibold))
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.8)
                         .frame(maxWidth: .infinity)
+                        .padding(.vertical, 15)
+                        .background(Palette.card, in: RoundedRectangle(cornerRadius: 14))
+                        .overlay {
+                            RoundedRectangle(cornerRadius: 14)
+                                .stroke(Palette.warning.opacity(0.6), lineWidth: 1)
+                        }
                 }
                 .buttonStyle(.plain)
                 .foregroundStyle(Palette.warning)
             }
         }
-        .cardStyle()
     }
 
     private var directionCard: some View {
@@ -146,7 +196,7 @@ struct ContentView: View {
                     .font(.caption.weight(.semibold))
                     .foregroundStyle(model.tracking ? Palette.accent : Palette.muted)
             }
-            Text("实心点随头部转动移动；校准后空心点显示云台跟随位置。此圆盘仅显示姿态，不可拖动。")
+            Text("实心点随头部转动移动；校准后空心点显示云台跟随位置。")
                 .font(.subheadline)
                 .foregroundStyle(Palette.muted)
                 .fixedSize(horizontal: false, vertical: true)
@@ -154,9 +204,19 @@ struct ContentView: View {
             HStack(spacing: 15) {
                 HeadDirectionDisplay(head: model.displayLook, camera: model.cameraLook)
                     .frame(width: 166, height: 166)
-                VStack(alignment: .leading, spacing: 15) {
-                    directionMetric("向右", value: model.displayLook.rightDegrees)
-                    directionMetric("向上", value: model.displayLook.upDegrees)
+                VStack(alignment: .leading, spacing: 12) {
+                    HStack(alignment: .top, spacing: 8) {
+                        VStack(alignment: .leading, spacing: 15) {
+                            directionMetric("向右", value: model.displayLook.rightDegrees)
+                            directionMetric("向上", value: model.displayLook.upDegrees)
+                        }
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        VStack(alignment: .leading, spacing: 15) {
+                            directionMetric("云台水平", value: model.cameraPoseAvailable ? model.cameraPose.panDegrees : nil, color: Palette.warning)
+                            directionMetric("云台俯仰", value: model.cameraPoseAvailable ? model.cameraPose.tiltDegrees : nil, color: Palette.warning)
+                        }
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                    }
                     HStack(spacing: 5) {
                         Circle()
                             .stroke(Palette.warning, lineWidth: 2)
@@ -173,33 +233,20 @@ struct ContentView: View {
         .cardStyle()
     }
 
-    private func directionMetric(_ title: String, value: Double) -> some View {
+    private func directionMetric(_ title: String, value: Double?, color: Color = .white) -> some View {
         VStack(alignment: .leading, spacing: 3) {
             Text(title)
                 .font(.caption)
                 .foregroundStyle(Palette.muted)
-            Text(String(format: "%+.1f°", value))
+                .lineLimit(1)
+                .minimumScaleFactor(0.8)
+            Text(value.map { String(format: "%+.1f°", $0) } ?? "—")
                 .font(.system(size: 24, weight: .medium, design: .rounded))
+                .foregroundStyle(value == nil ? Palette.muted : color)
                 .monospacedDigit()
                 .lineLimit(1)
                 .minimumScaleFactor(0.7)
         }
-    }
-
-    private func angleTile(title: String, value: Double, systemImage: String) -> some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Label(title, systemImage: systemImage)
-                .font(.caption)
-                .foregroundStyle(Palette.muted)
-            Text(String(format: "%+.1f°", value))
-                .font(.system(size: 25, weight: .medium, design: .rounded))
-                .monospacedDigit()
-                .minimumScaleFactor(0.7)
-                .lineLimit(1)
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(14)
-        .background(Color.white.opacity(0.04), in: RoundedRectangle(cornerRadius: 13))
     }
 
     private var tuningCard: some View {
@@ -254,6 +301,8 @@ struct ContentView: View {
 
     private var demoCard: some View {
         VStack(alignment: .leading, spacing: 12) {
+            Toggle("模拟云台", isOn: $model.demoCamera)
+                .font(.headline)
             Toggle(isOn: $model.demoHead) {
                 VStack(alignment: .leading, spacing: 4) {
                     Text("模拟头部动作")

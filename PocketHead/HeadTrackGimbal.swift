@@ -5,8 +5,8 @@ struct GimbalObservation {
     let measuredAt: TimeInterval
 }
 
-/// Boundary for replacing the simulator with the Pocket 4 Pro native target stream.
-/// A real implementation must own its connection token and reject submissions after
+/// Shared boundary for the simulated and Pocket 4 Pro native target streams.
+/// A real implementation owns its connection token and rejects submissions after
 /// disconnect or a stale camera pose.
 @MainActor
 protocol HeadTrackGimbal: AnyObject {

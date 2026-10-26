@@ -21,6 +21,7 @@ final class HeadphoneMotionService: NSObject, ObservableObject {
 
     @Published private(set) var status: Status = .unavailable
     @Published private(set) var latestSample: HeadMotionSample?
+    var onFailure: ((String) -> Void)?
 
     private let manager = CMHeadphoneMotionManager()
     private let deliveryQueue: OperationQueue = {
@@ -75,7 +76,11 @@ final class HeadphoneMotionService: NSObject, ObservableObject {
                     self.status = .streaming
                 } else if let errorMessage {
                     self.latestSample = nil
-                    self.status = .failed(errorMessage)
+                    let failure = Status.failed(errorMessage)
+                    if self.status != failure {
+                        self.status = failure
+                        self.onFailure?(errorMessage)
+                    }
                 }
             }
         }

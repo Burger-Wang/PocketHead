@@ -23,7 +23,7 @@
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
 	<key>NSBluetoothAlwaysUsageDescription</key>
-	<string>识别已连接的 AirPods，以便使用头部姿态功能。</string>
+	<string>发现并配对 Pocket 4 Pro，以建立相机控制连接。</string>
 	<key>NSLocalNetworkUsageDescription</key>
 	<string>连接 Pocket 4 Pro 并发送云台控制指令。</string>
 	<key>NSMotionUsageDescription</key>

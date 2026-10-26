@@ -14,7 +14,11 @@
 		B00000000000000000000005 /* SimulatedGimbal.swift in Sources */ = {isa = PBXBuildFile; fileRef = C00000000000000000000005 /* SimulatedGimbal.swift */; };
 		B00000000000000000000006 /* HeadTracking.swift in Sources */ = {isa = PBXBuildFile; fileRef = C00000000000000000000006 /* HeadTracking.swift */; };
 		B00000000000000000000007 /* HeadTrackGimbal.swift in Sources */ = {isa = PBXBuildFile; fileRef = C00000000000000000000009 /* HeadTrackGimbal.swift */; };
+		B00000000000000000000008 /* Pocket4ProGimbal.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0000000000000000000000D /* Pocket4ProGimbal.swift */; };
 		B00000000000000000000009 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = C0000000000000000000000B /* Assets.xcassets */; };
+		B0000000000000000000000A /* OpenCineDJI in Frameworks */ = {isa = PBXBuildFile; productRef = A20000000000000000000001 /* OpenCineDJI */; };
+		B0000000000000000000000B /* OpenCineDJIApple in Frameworks */ = {isa = PBXBuildFile; productRef = A20000000000000000000002 /* OpenCineDJIApple */; };
+		B0000000000000000000000C /* OpenCineMotion in Frameworks */ = {isa = PBXBuildFile; productRef = A20000000000000000000003 /* OpenCineMotion */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -28,6 +32,8 @@
 		C00000000000000000000008 /* PocketHead.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = PocketHead.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		C00000000000000000000009 /* HeadTrackGimbal.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HeadTrackGimbal.swift; sourceTree = "<group>"; };
 		C0000000000000000000000B /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		C0000000000000000000000C /* PocketHead.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = PocketHead.entitlements; sourceTree = "<group>"; };
+		C0000000000000000000000D /* Pocket4ProGimbal.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Pocket4ProGimbal.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -35,6 +41,9 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				B0000000000000000000000A /* OpenCineDJI in Frameworks */,
+				B0000000000000000000000B /* OpenCineDJIApple in Frameworks */,
+				B0000000000000000000000C /* OpenCineMotion in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -59,8 +68,10 @@
 				C00000000000000000000004 /* HeadTrackingViewModel.swift */,
 				C00000000000000000000009 /* HeadTrackGimbal.swift */,
 				C00000000000000000000005 /* SimulatedGimbal.swift */,
+				C0000000000000000000000D /* Pocket4ProGimbal.swift */,
 				C0000000000000000000000B /* Assets.xcassets */,
 				C00000000000000000000007 /* Info.plist */,
+				C0000000000000000000000C /* PocketHead.entitlements */,
 			);
 			path = PocketHead;
 			sourceTree = "<group>";
@@ -104,6 +115,11 @@
 			);
 			dependencies = (
 			);
+			packageProductDependencies = (
+				A20000000000000000000001 /* OpenCineDJI */,
+				A20000000000000000000002 /* OpenCineDJIApple */,
+				A20000000000000000000003 /* OpenCineMotion */,
+			);
 			name = PocketHead;
 			productName = PocketHead;
 			productReference = C00000000000000000000008 /* PocketHead.app */;
@@ -120,6 +136,11 @@
 				TargetAttributes = {
 					E00000000000000000000001 = {
 						CreatedOnToolsVersion = 27.1;
+						SystemCapabilities = {
+							com.apple.HotspotConfiguration = {
+								enabled = 1;
+							};
+						};
 					};
 				};
 			};
@@ -133,6 +154,9 @@
 				Base,
 			);
 			mainGroup = D00000000000000000000001;
+			packageReferences = (
+				A10000000000000000000001 /* XCLocalSwiftPackageReference "Vendor/OpenCinePocket" */,
+			);
 			productRefGroup = D00000000000000000000005 /* Products */;
 			projectDirPath = "";
 			projectRoot = "";
@@ -164,6 +188,7 @@
 				B00000000000000000000004 /* HeadTrackingViewModel.swift in Sources */,
 				B00000000000000000000007 /* HeadTrackGimbal.swift in Sources */,
 				B00000000000000000000005 /* SimulatedGimbal.swift in Sources */,
+				B00000000000000000000008 /* Pocket4ProGimbal.swift in Sources */,
 				B00000000000000000000006 /* HeadTracking.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -228,6 +253,7 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_ENTITLEMENTS = PocketHead/PocketHead.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				DEVELOPMENT_TEAM = GS2B53VPCJ;
 				GENERATE_INFOPLIST_FILE = NO;
@@ -262,6 +288,19 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCLocalSwiftPackageReference section */
+		A10000000000000000000001 /* XCLocalSwiftPackageReference "Vendor/OpenCinePocket" */ = {
+			isa = XCLocalSwiftPackageReference;
+			relativePath = Vendor/OpenCinePocket;
+		};
+/* End XCLocalSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		A20000000000000000000001 /* OpenCineDJI */ = {isa = XCSwiftPackageProductDependency; package = A10000000000000000000001 /* XCLocalSwiftPackageReference "Vendor/OpenCinePocket" */; productName = OpenCineDJI; };
+		A20000000000000000000002 /* OpenCineDJIApple */ = {isa = XCSwiftPackageProductDependency; package = A10000000000000000000001 /* XCLocalSwiftPackageReference "Vendor/OpenCinePocket" */; productName = OpenCineDJIApple; };
+		A20000000000000000000003 /* OpenCineMotion */ = {isa = XCSwiftPackageProductDependency; package = A10000000000000000000001 /* XCLocalSwiftPackageReference "Vendor/OpenCinePocket" */; productName = OpenCineMotion; };
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = G00000000000000000000001 /* Project object */;
 }

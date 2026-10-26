@@ -4,7 +4,7 @@
 
 ## 当前进度
 
-这是第一阶段可运行工程。界面会清楚显示「模拟云台」，**目前不会向实体 Pocket 4 Pro 发送指令**。
+真机版现已提供手动 Wi-Fi 连接的实体云台试验路径：只有相机控制握手成功并收到新鲜云台姿态，才能校准和发送原生角度目标。**实体 Pocket 4 Pro 上的实际效果仍待台架验证**；模拟器默认使用模拟云台。
 
 | 功能 | 状态 |
 | --- | --- |
@@ -15,7 +15,9 @@
 | 模拟头部与模拟云台，供模拟器和无相机环境验证 | 已实现 |
 | 头追方向圆盘：显示头部方向与云台跟随位置 | 已实现；圆盘只读 |
 | 头部或云台姿态中断、AirPods 连接代际变化、切后台时停止头追 | 已实现 |
-| Pocket 4 Pro 发现、连接、姿态回读与真实云台控制 | 待接入 |
+| 手动加入相机 Wi-Fi 后的控制握手、云台姿态回读、原生角度目标与停止命令 | 已接入；等待实体 4 Pro 验证 |
+| 直接握手失败后的 Pocket 4 Pro 蓝牙发现与配对 | 已接入试验路径；待实体相机验证 |
+| 自动加入相机 Wi-Fi、完整机型与会话归属验证 | 尚未接入 |
 | 云台回中、180° 旋转、录像控制 | 待真实相机链路验证后接入 |
 
 ## 运行与配置
@@ -23,7 +25,8 @@
 1. 用 Xcode 打开 `PocketHead.xcodeproj`，选择 `PocketHead` scheme。
 2. 模拟器可直接运行，默认启用「模拟头部动作」。拖动模拟头部角度滑块，可在只读方向圆盘预览头部方向；点击「校准前方并开始」后，圆盘还会显示模拟云台的跟随位置。
 3. 真机运行时，在 target 的 **Signing & Capabilities** 选择自己的 Apple Development Team；如包名冲突，修改 Bundle Identifier。iPhone 需开启开发者模式，并连接支持头部跟踪的 AirPods。首次使用需允许运动与健身权限。参见 Apple 的[真机运行说明](https://developer.apple.com/documentation/xcode/running-your-app-on-simulated-or-physical-devices)与[耳机运动数据说明](https://developer.apple.com/documentation/coremotion/cmheadphonemotionmanager)。
-4. 核心算法测试运行 `swift test`。模拟器编译可运行：
+4. 在 Pocket 4 Pro 上开启无线连接，用 **iPhone 系统设置**手动加入相机 Wi-Fi。返回 App，确认「模拟云台」关闭，点击 Pocket 4 Pro 状态卡右上角的「连接」。首次连接要允许本地网络访问。如果直接控制握手失败，App 会扫描 Pocket 蓝牙并尝试配对；若相机屏幕提示授权，请在相机上确认。连接中可点「断开」取消；连接成功后该按钮也可断开相机。错误会在顶部悬浮提示中显示 5 秒，也可点 × 提前关闭。看到「实体云台已连接」并有实时水平/俯仰读数后，保持相机固定、头部正前方，再点击校准。先做约 5° 的小幅转头测试，随时可点「停止头追」。相机 Wi-Fi 只有已加入并取得 `192.168.2.x` 地址还不够，App 必须收到协议握手和云台姿态。
+5. 核心算法测试运行 `swift test`。模拟器编译可运行：
 
    ```sh
    xcodebuild -project PocketHead.xcodeproj -scheme PocketHead \
@@ -31,7 +34,9 @@
      CODE_SIGNING_ALLOWED=NO build
    ```
 
-目前无 API Key 或第三方构建工具要求。实体 4 Pro 联调时还需要一台可连接的相机；若使用系统 API 加入相机 Wi-Fi，需按 Apple 文档启用 [Hotspot Configuration 能力](https://developer.apple.com/documentation/bundleresources/entitlements/com.apple.developer.networking.hotspotconfiguration)。
+目前无 API Key 要求。工程链接了仓库内固定版本的 OpenCine DJI 源码。**Release** 配置保留 [Hotspot Configuration 能力](https://developer.apple.com/documentation/bundleresources/entitlements/com.apple.developer.networking.hotspotconfiguration)；当前个人开发团队无法签发此权限，**Debug** 不携带它。当前 App 不调用自动加入热点的 API，只支持先在系统设置手动入网，再点 App 内的连接按钮。
+
+若提示「手机尚未取得相机 Wi-Fi 地址」，检查是否连的是 Pocket 热点而非其他 Wi-Fi。若显示蓝牙搜索或配对，请保持相机无线连接开启，并在相机屏幕确认授权；若给出指定 SSID，去 iPhone 设置手动加入它后回到 App 重试。若提示「等待云台反馈」，握手已成功但暂未收到可用于安全校准的新鲜姿态；持续 5 秒会转为可读的失败提示。
 
 ### Mac 上的 AirPods 与 iOS 预览
 
@@ -42,19 +47,18 @@
 1. AirPods 姿态由 Core Motion 产生，样本带系统运行时间戳。App 在主线程保存最新一帧，并以约 25 Hz 读取，避免积压旧指令。
 2. 校准时保存头部四元数和云台角度。之后用相对四元数旋转面部正前方 `+Y` 向量，再由 `atan2` 得到向右、向上的角度。这可以避免在已转头状态下抬头时，欧拉角差值带来的水平漂移。
 3. 目标角度在校准云台姿态上叠加头部位移，并依次应用死区、灵敏度、平滑、最大角速度和云台角度边界。
-4. 头部样本超过 200 ms 不再输出目标，校准用的云台姿态必须在 300 ms 内。App 切入后台会停止头追。真实相机接入后，断线、人工接管和视频状态也必须成为停机条件。
+4. 头部样本超过 200 ms 不再输出目标，校准用的云台姿态必须在 300 ms 内。App 切入后台会停止头追并关闭控制链路；Wi-Fi、控制链路或云台姿态中断也会停止原生目标流。人工接管和视频状态尚未接入停机条件。
 
-云台边界在模拟器里暂用 OpenPocketCine 报告的 4 Pro 参考值（水平 `-48°…225°`、俯仰 `-44°…70°`）。**实体相机要以连接时读到并验证的能力为准**。平滑时间和 25 Hz 更新频率是本 App 的设置，不代表实测端到端延迟。
+云台边界目前沿用 OpenPocketCine 报告的 4 Pro 参考值（水平 `-48°…225°`、俯仰 `-44°…70°`），还未从实体相机读取能力。实际控制需先验证机型与可达范围。平滑时间和 25 Hz 更新频率是本 App 的设置，不代表实测端到端延迟。
 
 ### 与 OpenPocketCine / OpenCine 的关系
 
-方案参考了 [OpenPocketCine 的头追设计](https://github.com/erik-sutton95/OpenPocketCine/blob/18137a5527951be510fc803cba2360fbcc23155d/docs/head-tracking.md) 和 [OpenCine 的 DJI 模块](https://github.com/erik-sutton95/OpenCine/tree/4a3d9b63b438450249ecd40a634328d0f8087f96/Sources/OpenCineDJIApple)。本工程的数学和 UI 代码单独编写，目前没有复制或链接其源码。
+方案参考了 [OpenPocketCine 的头追设计](https://github.com/erik-sutton95/OpenPocketCine/blob/main/docs/head-tracking.md)。`Vendor/OpenCinePocket` 包含 [OpenCine](https://github.com/erik-sutton95/OpenCine) 修订 `1be846d664da0020ef67f039a34f207c0b047404` 的六个 DJI 相关模块及依赖，保留 Apache 2.0 许可与通知。App 目前直接使用 `DjiAppleDatalink` 完成手动 Wi-Fi 下的握手、云台姿态回读和有代际标识的原生目标流；头追数学与 UI 仍由本工程实现。
 
-下一步的 4 Pro 适配应优先复用 OpenCine 的 `OpenCineDJI` / `OpenCineDJIApple` 模块：
+后续 4 Pro 适配应继续复用 OpenCine 的模块：
 
-- `DjiAppleConnectionRun`：发现、BLE 配对与 Wi-Fi 接入。
-- `DjiAppleGimbalControl.freshWaypoint`：取得用于校准的实时云台姿态。
-- `beginNativeHeadTrack` / `updateNativeHeadTrack` / `endNativeHeadTrack`：使用有代际标识的原生目标流发送与停止头追。
-- 实体控制前补齐 OpenCine 要求的相机状态、视频新鲜度、外部控制接管及断线保护。
+- `DjiAppleConnectionRun`：直接握手失败后尝试 BLE 配对和读取相机 Wi-Fi 信息；个人开发团队仍由系统设置手动加入 Wi-Fi。继续验证 BLE 身份与当前 Wi-Fi 会话的对应关系。
+- 对照 `DjiAppleGimbalControl` 的云台模式、速度准备与恢复，以及人工接管、视频状态和断线保护。
+- 在实体 4 Pro 上验证原生俯仰坐标符号、可达范围、命令节奏与回读时延。
 
 OpenPocketCine 文档明确区分了小幅原生命令探测与持续头追体验验证。真实 4 Pro 接入后，要先做小角度、低速、随时可停的台架测试，再测阶跃和往复转头的响应、过冲、抖动、停机时间，以及视频帧率和控制 ACK；不要把模拟器运行视为硬件验证。
