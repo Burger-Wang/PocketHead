@@ -26,8 +26,7 @@ private enum Palette {
 }
 
 struct ContentView: View {
-    @Environment(\.scenePhase) private var scenePhase
-    @StateObject private var model = HeadTrackingViewModel()
+    @ObservedObject var model: HeadTrackingViewModel
     @ScaledMetric(relativeTo: .body) private var metricRowHeight: CGFloat = 49
     @ScaledMetric(relativeTo: .body) private var metricFooterHeight: CGFloat = 44
 
@@ -93,15 +92,6 @@ struct ContentView: View {
             .navigationBarTitleDisplayMode(.inline)
         }
         .tint(Palette.accent)
-        .onAppear { model.start() }
-        .onDisappear { model.suspend() }
-        .onChange(of: scenePhase) { _, phase in
-            if phase == .active {
-                model.start()
-            } else {
-                model.suspend()
-            }
-        }
     }
 
     private var introduction: some View {
@@ -479,11 +469,11 @@ private extension View {
 }
 
 #Preview("浅色") {
-    ContentView()
+    ContentView(model: HeadTrackingViewModel())
         .preferredColorScheme(.light)
 }
 
 #Preview("深色") {
-    ContentView()
+    ContentView(model: HeadTrackingViewModel())
         .preferredColorScheme(.dark)
 }
