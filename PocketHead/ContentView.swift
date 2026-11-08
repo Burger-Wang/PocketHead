@@ -7,6 +7,9 @@ private enum Palette {
     static let muted = adaptive(light: 0x52636B, dark: 0x99ADB3)
     static let accent = adaptive(light: 0x087A62, dark: 0x75EBC4)
     static let warning = adaptive(light: 0xA35E00, dark: 0xFAC269)
+    static let recordingInactive = adaptive(light: 0x837034, dark: 0x8A783E)
+    static let recordingIdle = adaptive(light: 0xE5A800, dark: 0xFFD43B)
+    static let recordingActive = adaptive(light: 0xD92D37, dark: 0xFF5964)
     static let onAccent = adaptive(light: 0xFFFFFF, dark: 0x0B1013)
     static let controlFill = adaptive(light: 0xF0F4F4, dark: 0x20262A)
     static let dialFill = adaptive(light: 0xF1F6F5, dark: 0x20272B)
@@ -27,6 +30,7 @@ private enum Palette {
 
 struct ContentView: View {
     @ObservedObject var model: HeadTrackingViewModel
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @ScaledMetric(relativeTo: .body) private var metricRowHeight: CGFloat = 49
     @ScaledMetric(relativeTo: .body) private var metricFooterHeight: CGFloat = 44
 
@@ -34,7 +38,6 @@ struct ContentView: View {
         NavigationStack {
             ScrollView {
                 VStack(alignment: .leading, spacing: 18) {
-                    introduction
                     HStack(alignment: .top, spacing: 12) {
                         sensorCard
                         cameraCard
@@ -92,22 +95,6 @@ struct ContentView: View {
             .navigationBarTitleDisplayMode(.inline)
         }
         .tint(Palette.accent)
-    }
-
-    private var introduction: some View {
-        VStack(alignment: .leading, spacing: 7) {
-            HStack(spacing: 9) {
-                Image(systemName: "viewfinder")
-                    .foregroundStyle(Palette.accent)
-                Text("让镜头跟随视线")
-                    .font(.title2.weight(.semibold))
-            }
-            Text("面向前方，点击校准。随后左右转头控制水平，抬头低头控制俯仰。")
-                .font(.subheadline)
-                .foregroundStyle(Palette.muted)
-                .fixedSize(horizontal: false, vertical: true)
-        }
-        .padding(.bottom, 3)
     }
 
     private var sensorCard: some View {
@@ -198,14 +185,17 @@ struct ContentView: View {
     private var directionCard: some View {
         VStack(alignment: .leading, spacing: 14) {
             HStack(alignment: .firstTextBaseline) {
-                Text("头追方向")
-                    .font(.headline)
+                HStack(spacing: 8) {
+                    Text("头追方向")
+                        .font(.headline)
+                    recordingIndicator
+                }
                 Spacer()
                 Text(model.tracking ? "实时跟随" : model.demoHead ? "模拟姿态预览" : "等待校准")
                     .font(.caption.weight(.semibold))
                     .foregroundStyle(model.tracking ? Palette.accent : Palette.muted)
             }
-            Text("实心点随头部转动移动；校准后空心点显示云台跟随位置。")
+            Text("实心点随头部转动移动；校准后空心点显示云台相对方向。")
                 .font(.subheadline)
                 .foregroundStyle(Palette.muted)
                 .fixedSize(horizontal: false, vertical: true)
@@ -221,18 +211,7 @@ struct ContentView: View {
                                 .frame(height: metricRowHeight, alignment: .topLeading)
                             directionMetric("向上", value: model.displayLook.upDegrees)
                                 .frame(height: metricRowHeight, alignment: .topLeading)
-                            HStack(spacing: 5) {
-                                Circle()
-                                    .stroke(Palette.warning, lineWidth: 2)
-                                    .frame(width: 10, height: 10)
-                                Text("云台跟随")
-                                    .font(.caption)
-                                    .foregroundStyle(Palette.muted)
-                                    .lineLimit(1)
-                                    .minimumScaleFactor(0.8)
-                            }
-                            .opacity(model.cameraLook == nil ? 0.45 : 1)
-                            .frame(height: metricFooterHeight, alignment: .leading)
+                            cameraControlButton("镜头翻转", enabled: model.canFlipCamera, action: model.flipCamera)
                         }
                         .frame(width: columnWidth, alignment: .leading)
                         VStack(alignment: .leading, spacing: 12) {
@@ -240,18 +219,7 @@ struct ContentView: View {
                                 .frame(height: metricRowHeight, alignment: .topLeading)
                             directionMetric("云台俯仰", value: model.cameraPoseAvailable ? model.cameraPose.tiltDegrees : nil, color: Palette.warning)
                                 .frame(height: metricRowHeight, alignment: .topLeading)
-                            Button(action: model.recenterCamera) {
-                                Text("云台回中")
-                                    .font(.caption.weight(.semibold))
-                                    .lineLimit(1)
-                                    .minimumScaleFactor(0.8)
-                                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
-                                    .contentShape(Rectangle())
-                            }
-                            .frame(height: metricFooterHeight)
-                            .buttonStyle(.plain)
-                            .foregroundStyle(model.canRecenterCamera ? Palette.accent : Palette.muted)
-                            .disabled(!model.canRecenterCamera)
+                            cameraControlButton("云台回中", enabled: model.canRecenterCamera, action: model.recenterCamera)
                         }
                         .frame(width: columnWidth, alignment: .leading)
                     }
@@ -260,6 +228,52 @@ struct ContentView: View {
             }
         }
         .cardStyle()
+    }
+
+    private var recordingIndicator: some View {
+        let state = model.cameraRecordingIndicator
+        return TimelineView(.animation(minimumInterval: 0.5, paused: state != .recording || reduceMotion)) { context in
+            Circle()
+                .stroke(recordingIndicatorColor(state), lineWidth: 2)
+                .opacity(state == .recording && !reduceMotion
+                    && Int(context.date.timeIntervalSinceReferenceDate * 2) % 2 != 0 ? 0.2 : 1)
+                .frame(width: 12, height: 12)
+        }
+        .frame(width: 12, height: 12)
+        .accessibilityLabel("相机录制状态")
+        .accessibilityValue(recordingIndicatorValue(state))
+    }
+
+    private func recordingIndicatorColor(_ state: CameraRecordingIndicator) -> Color {
+        switch state {
+        case .disconnected, .unknown: Palette.recordingInactive
+        case .idle: Palette.recordingIdle
+        case .recording: Palette.recordingActive
+        }
+    }
+
+    private func recordingIndicatorValue(_ state: CameraRecordingIndicator) -> String {
+        switch state {
+        case .disconnected: "相机未连接"
+        case .unknown: "已连接，等待录制状态"
+        case .idle: "已连接，未录制"
+        case .recording: "正在录制"
+        }
+    }
+
+    private func cameraControlButton(_ title: String, enabled: Bool, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            Text(title)
+                .font(.caption.weight(.semibold))
+                .lineLimit(1)
+                .minimumScaleFactor(0.8)
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
+                .contentShape(Rectangle())
+        }
+        .frame(height: metricFooterHeight)
+        .buttonStyle(.plain)
+        .foregroundStyle(enabled ? Palette.accent : Palette.muted)
+        .disabled(!enabled)
     }
 
     private func directionMetric(_ title: String, value: Double?, color: Color = .primary) -> some View {
@@ -402,7 +416,7 @@ private struct HeadDirectionDisplay: View {
         .accessibilityElement(children: .ignore)
         .accessibilityLabel("头追方向显示")
         .accessibilityValue(accessibilityValue)
-        .accessibilityHint("仅显示头部方向和云台跟随位置")
+        .accessibilityHint("仅显示头部方向和云台相对方向")
     }
 
     private var accessibilityValue: String {

@@ -1,5 +1,12 @@
 import Foundation
 
+enum CameraRecordingIndicator {
+    case disconnected
+    case unknown
+    case idle
+    case recording
+}
+
 @MainActor
 final class HeadTrackingViewModel: ObservableObject {
     let sensor = HeadphoneMotionService()
@@ -8,7 +15,6 @@ final class HeadTrackingViewModel: ObservableObject {
     @Published private(set) var statusMessage = "连接 AirPods 后，面向前方并校准。"
     @Published private(set) var errorToast: String?
     @Published private(set) var cameraPose = GimbalPose(panDegrees: 0, tiltDegrees: 0)
-    @Published private(set) var targetPose = GimbalPose(panDegrees: 0, tiltDegrees: 0)
     @Published private(set) var cameraPoseAvailable = false
     @Published private(set) var look = LookAngles.zero
     @Published private(set) var preset: FollowPreset? = .standard
@@ -48,7 +54,7 @@ final class HeadTrackingViewModel: ObservableObject {
     private let simulatedGimbal = SimulatedGimbal()
     private let realGimbal = Pocket4ProGimbal()
     private var gimbal: any HeadTrackGimbal { demoCamera ? simulatedGimbal : realGimbal }
-    @Published private var connectionRevision: UInt64 = 0
+    @Published private var cameraStateRevision: UInt64 = 0
     private var connectTask: Task<Void, Never>?
     private var errorToastDismissTask: Task<Void, Never>?
     private var errorToastRevision: UInt64 = 0
@@ -63,9 +69,17 @@ final class HeadTrackingViewModel: ObservableObject {
             if self?.tracking == true { self?.stopTracking() }
             self?.reportError("AirPods 姿态读取失败：\(message)")
         }
+        // Background timers are coalesced; fresh motion samples fill the control gaps.
+        sensor.onSample = { [weak self] in
+            guard let self, self.tracking, self.isInBackground else { return }
+            let now = ProcessInfo.processInfo.systemUptime
+            if now - (self.previousTick ?? now) >= 0.04 {
+                self.tick()
+            }
+        }
         realGimbal.onPhaseChange = { [weak self] in
             guard let self else { return }
-            self.connectionRevision &+= 1
+            self.cameraStateRevision &+= 1
             if self.tracking && self.realGimbal.observation == nil {
                 self.stopTracking()
                 self.statusMessage = "相机反馈中断，头追已安全停止。请重新连接并校准。"
@@ -89,6 +103,9 @@ final class HeadTrackingViewModel: ObservableObject {
                     self.showErrorToast(message)
                 }
             }
+        }
+        realGimbal.onRecordingChange = { [weak self] in
+            self?.cameraStateRevision &+= 1
         }
         #if targetEnvironment(simulator)
         demoHead = true
@@ -114,7 +131,13 @@ final class HeadTrackingViewModel: ObservableObject {
         }
     }
     var cameraIsConnected: Bool { realGimbal.phase == .connected }
+    var cameraRecordingIndicator: CameraRecordingIndicator {
+        guard !demoCamera, cameraIsConnected else { return .disconnected }
+        guard let isRecording = realGimbal.isRecording else { return .unknown }
+        return isRecording ? .recording : .idle
+    }
     var canRecenterCamera: Bool { !demoCamera && realGimbal.observation != nil }
+    var canFlipCamera: Bool { !demoCamera && realGimbal.observation != nil }
 
     func dismissErrorToast() {
         errorToastRevision &+= 1
@@ -150,6 +173,14 @@ final class HeadTrackingViewModel: ObservableObject {
         realGimbal.recenter()
     }
 
+    func flipCamera() {
+        guard canFlipCamera else { return }
+        stopTracking()
+        if !realGimbal.flip() {
+            reportError("镜头翻转指令发送失败，请检查相机连接后重试。")
+        }
+    }
+
     var displayLook: LookAngles {
         if tracking { return look }
         if demoHead {
@@ -181,11 +212,13 @@ final class HeadTrackingViewModel: ObservableObject {
 
     func becameActive() {
         isInBackground = false
+        realGimbal.usesBackgroundSmoothing = false
         start()
     }
 
     func enteredBackground() {
         isInBackground = true
+        realGimbal.usesBackgroundSmoothing = tracking && hasBackgroundReservation
         if !tracking || !hasBackgroundReservation {
             suspend()
         }
@@ -272,7 +305,6 @@ final class HeadTrackingViewModel: ObservableObject {
             calibratedSensorGeneration = demoHead ? nil : sensor.streamGeneration
             look = .zero
             cameraPose = camera.pose
-            targetPose = camera.pose
             calibrationCameraPose = camera.pose
             statusMessage = foregroundOnly
                 ? "前方已校准，头追仅在前台运行。"
@@ -295,6 +327,7 @@ final class HeadTrackingViewModel: ObservableObject {
     private func stopTracking(keepingBackgroundTask: Bool) {
         let wasTracking = tracking
         tracking = false
+        realGimbal.usesBackgroundSmoothing = false
         calibratedSensorGeneration = nil
         engine.reset()
         gimbal.endHeadTracking()
@@ -368,11 +401,14 @@ final class HeadTrackingViewModel: ObservableObject {
         let elapsed = max(0, min(now - (previousTick ?? now), 0.25))
         previousTick = now
         gimbal.advance(elapsed: elapsed, now: now)
-        if let observation = gimbal.observation {
-            cameraPose = observation.pose
-            cameraPoseAvailable = true
-        } else {
-            cameraPoseAvailable = false
+        let currentObservation = gimbal.observation
+        if !isInBackground {
+            if let observation = currentObservation {
+                if cameraPose != observation.pose { cameraPose = observation.pose }
+                if !cameraPoseAvailable { cameraPoseAvailable = true }
+            } else if cameraPoseAvailable {
+                cameraPoseAvailable = false
+            }
         }
 
         guard tracking else { return }
@@ -381,7 +417,7 @@ final class HeadTrackingViewModel: ObservableObject {
             reportError("AirPods 连接状态变化，头追已停止。请重新校准。")
             return
         }
-        guard let camera = gimbal.observation,
+        guard let camera = currentObservation,
               now >= camera.measuredAt,
               now - camera.measuredAt <= HeadTrackingEngine.maximumGimbalAge else {
             stopTracking()
@@ -400,8 +436,9 @@ final class HeadTrackingViewModel: ObservableObject {
             return
         }
         if let nextTarget = engine.update(head: head, now: now) {
-            targetPose = nextTarget
-            look = engine.lastLook
+            if !isInBackground, look != engine.lastLook {
+                look = engine.lastLook
+            }
             if !gimbal.submit(nextTarget, measuredAt: head.measuredAt) {
                 stopTracking()
                 reportError("云台控制中断，头追已安全停止。请重新校准。")
