@@ -5,12 +5,6 @@ struct PocketHeadApp: App {
     @Environment(\.scenePhase) private var scenePhase
     @StateObject private var model = HeadTrackingViewModel()
 
-    init() {
-        if #available(iOS 26.0, *) {
-            ContinuedTrackingSession.shared.register()
-        }
-    }
-
     var body: some Scene {
         WindowGroup {
             ContentView(model: model)
@@ -18,8 +12,8 @@ struct PocketHeadApp: App {
                 .onChange(of: scenePhase) { _, phase in
                     switch phase {
                     case .active: model.becameActive()
-                    case .background: model.enteredBackground()
-                    case .inactive: break
+                    case .background: model.suspend()
+                    case .inactive: model.touchGuard.setSceneActive(false)
                     @unknown default: break
                     }
                 }
