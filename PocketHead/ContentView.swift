@@ -32,8 +32,10 @@ struct ContentView: View {
     @ObservedObject var model: HeadTrackingViewModel
     @ObservedObject private var touchGuard: TouchGuardController
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @ScaledMetric(relativeTo: .body) private var metricRowHeight: CGFloat = 49
     @ScaledMetric(relativeTo: .body) private var metricFooterHeight: CGFloat = 44
+    @State private var followPresetButtonHeight: CGFloat = 38
 
     init(model: HeadTrackingViewModel) {
         self.model = model
@@ -60,6 +62,7 @@ struct ContentView: View {
                         .padding(.horizontal, 4)
                 }
                 .padding(18)
+                .animation(trackingLayoutAnimation, value: model.tracking)
                 .accessibilityHidden(touchGuard.isPresented)
             }
             .overlay(alignment: .top) {
@@ -101,6 +104,11 @@ struct ContentView: View {
             .background(Palette.background.ignoresSafeArea())
             .navigationTitle("Pocket动态追踪")
             .navigationBarTitleDisplayMode(.inline)
+        }
+        .onPreferenceChange(FollowPresetButtonHeightKey.self) { height in
+            if height > 0, abs(height - followPresetButtonHeight) > 0.01 {
+                followPresetButtonHeight = height
+            }
         }
         .tint(Palette.accent)
         .disabled(touchGuard.isPresented)
@@ -163,52 +171,69 @@ struct ContentView: View {
         }
     }
 
-    private var trackingControls: some View {
-        VStack(spacing: 10) {
-            trackingActions
-            if model.tracking {
-                Button {
-                    if model.tracking { touchGuard.enter() }
-                } label: {
-                    Label("防误触", systemImage: "hand.raised")
-                        .font(.subheadline.weight(.semibold))
-                        .frame(maxWidth: .infinity, minHeight: 48)
-                        .background(Palette.card, in: RoundedRectangle(cornerRadius: 14))
-                        .overlay {
-                            RoundedRectangle(cornerRadius: 14)
-                                .stroke(Palette.border, lineWidth: 1)
-                        }
-                }
-                .buttonStyle(.plain)
-                .accessibilityHint("遮挡页面操作并保持屏幕常亮，长按一点五秒可退出")
-                .accessibilityIdentifier("touchGuard.enter")
-            }
-        }
+    private var trackingLayoutAnimation: Animation? {
+        reduceMotion ? nil : .easeInOut(duration: 0.25)
     }
 
-    private var trackingActions: some View {
-        HStack(spacing: 12) {
+    private var touchGuardButton: some View {
+        Button {
+            if model.tracking { touchGuard.enter() }
+        } label: {
+            Group {
+                if dynamicTypeSize.isAccessibilitySize {
+                    Text("防误触")
+                } else {
+                    Label("防误触", systemImage: "hand.raised")
+                }
+            }
+            .font(.subheadline.weight(.semibold))
+            .lineLimit(1)
+            .minimumScaleFactor(0.65)
+            .frame(maxWidth: .infinity)
+            .frame(height: followPresetButtonHeight)
+            .background(Palette.controlFill, in: RoundedRectangle(cornerRadius: 10))
+            .overlay {
+                RoundedRectangle(cornerRadius: 10)
+                    .stroke(Palette.border, lineWidth: 1)
+            }
+        }
+        .buttonStyle(.plain)
+        .foregroundStyle(Palette.accent)
+        .accessibilityHint("遮挡页面操作并保持屏幕常亮，长按一点五秒可退出")
+        .accessibilityIdentifier("touchGuard.enter")
+    }
+
+    private var trackingControls: some View {
+        HStack(spacing: model.showsRecordingControl ? 8 : 12) {
             Button(action: model.calibrate) {
-                Label(model.tracking ? "重新校准前方" : "校准前方并开始", systemImage: "scope")
+                trackingControlLabel(model.tracking ? (model.showsRecordingControl ? "重新校准" : "重新校准前方") : "校准前方并开始", systemImage: "scope")
                     .font(.subheadline.weight(.semibold))
                     .contentTransition(.opacity)
                     .lineLimit(1)
-                    .minimumScaleFactor(0.8)
-                    .frame(maxWidth: .infinity)
+                    .minimumScaleFactor(dynamicTypeSize.isAccessibilitySize ? 0.35 : 0.8)
+                    .padding(.horizontal, 8)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
                     .padding(.vertical, 15)
                     .background(Palette.accent, in: RoundedRectangle(cornerRadius: 14))
                     .foregroundStyle(Palette.onAccent)
             }
             .buttonStyle(.plain)
+            .accessibilityIdentifier("tracking.calibrate")
+            .accessibilityLabel(model.tracking ? "重新校准前方" : "校准前方并开始")
             .accessibilityHint("保持头部静止，将此刻朝向设为正前方")
+
+            if model.showsRecordingControl {
+                recordingButton
+            }
 
             if model.tracking {
                 Button(action: model.stopTracking) {
-                    Label("停止头追", systemImage: "stop.circle")
+                    trackingControlLabel("停止头追", systemImage: "stop.circle")
                         .font(.subheadline.weight(.semibold))
                         .lineLimit(1)
-                        .minimumScaleFactor(0.8)
-                        .frame(maxWidth: .infinity)
+                        .minimumScaleFactor(dynamicTypeSize.isAccessibilitySize ? 0.35 : 0.8)
+                        .padding(.horizontal, 8)
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
                         .padding(.vertical, 15)
                         .background(Palette.card, in: RoundedRectangle(cornerRadius: 14))
                         .overlay {
@@ -218,10 +243,53 @@ struct ContentView: View {
                 }
                 .buttonStyle(.plain)
                 .foregroundStyle(Palette.warning)
+                .accessibilityIdentifier("tracking.stop")
                 .transition(.opacity.combined(with: .scale(scale: 0.92, anchor: .trailing)))
             }
         }
-        .animation(.easeInOut(duration: 0.25), value: model.tracking)
+        .fixedSize(horizontal: false, vertical: true)
+    }
+
+    @ViewBuilder
+    private func trackingControlLabel(_ title: String, systemImage: String) -> some View {
+        if dynamicTypeSize.isAccessibilitySize {
+            Text(title)
+        } else {
+            Label(title, systemImage: systemImage)
+        }
+    }
+
+    private var recordingButton: some View {
+        Button(action: model.toggleRecording) {
+            HStack(spacing: 6) {
+                if model.isChangingRecording {
+                    ProgressView()
+                        .controlSize(.mini)
+                        .tint(Palette.recordingActive)
+                } else if !dynamicTypeSize.isAccessibilitySize {
+                    Image(systemName: model.cameraRecordingIndicator == .recording ? "stop.circle" : "record.circle")
+                }
+                Text(model.recordingButtonTitle)
+            }
+            .font(.subheadline.weight(.semibold))
+            .lineLimit(1)
+            .minimumScaleFactor(dynamicTypeSize.isAccessibilitySize ? 0.35 : 0.8)
+            .padding(.horizontal, 8)
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .padding(.vertical, 15)
+            .background(Palette.recordingActive.opacity(0.08), in: RoundedRectangle(cornerRadius: 14))
+            .overlay {
+                RoundedRectangle(cornerRadius: 14)
+                    .stroke(Palette.recordingActive.opacity(0.6), lineWidth: 1)
+            }
+        }
+        .buttonStyle(.plain)
+        .foregroundStyle(Palette.recordingActive)
+        .disabled(!model.canToggleRecording)
+        .opacity(model.canToggleRecording || model.isChangingRecording ? 1 : 0.5)
+        .accessibilityIdentifier("camera.recordingControl")
+        .accessibilityLabel(model.recordingButtonTitle)
+        .accessibilityHint("控制 Pocket 视频录制，头追保持当前状态")
     }
 
     private var directionCard: some View {
@@ -247,26 +315,34 @@ struct ContentView: View {
                     .frame(width: 166, height: 166)
                 GeometryReader { geometry in
                     let columnWidth = max(0, (geometry.size.width - 8) / 2)
-                    HStack(alignment: .top, spacing: 8) {
-                        VStack(alignment: .leading, spacing: 12) {
-                            directionMetric("向右", value: model.displayLook.rightDegrees)
-                                .frame(height: metricRowHeight, alignment: .topLeading)
-                            directionMetric("向上", value: model.displayLook.upDegrees)
-                                .frame(height: metricRowHeight, alignment: .topLeading)
-                            cameraControlButton("镜头翻转", enabled: model.canFlipCamera, action: model.flipCamera)
+                    VStack(spacing: 8) {
+                        HStack(alignment: .top, spacing: 8) {
+                            VStack(alignment: .leading, spacing: 12) {
+                                directionMetric("向右", value: model.displayLook.rightDegrees)
+                                    .frame(height: metricRowHeight, alignment: .topLeading)
+                                directionMetric("向上", value: model.displayLook.upDegrees)
+                                    .frame(height: metricRowHeight, alignment: .topLeading)
+                                cameraControlButton("镜头翻转", enabled: model.canFlipCamera, action: model.flipCamera)
+                            }
+                            .frame(width: columnWidth, alignment: .leading)
+                            VStack(alignment: .leading, spacing: 12) {
+                                directionMetric("云台水平", value: model.cameraPoseAvailable ? model.cameraPose.panDegrees : nil, color: Palette.warning)
+                                    .frame(height: metricRowHeight, alignment: .topLeading)
+                                directionMetric("云台俯仰", value: model.cameraPoseAvailable ? model.cameraPose.tiltDegrees : nil, color: Palette.warning)
+                                    .frame(height: metricRowHeight, alignment: .topLeading)
+                                cameraControlButton("云台回中", enabled: model.canRecenterCamera, action: model.recenterCamera)
+                            }
+                            .frame(width: columnWidth, alignment: .leading)
                         }
-                        .frame(width: columnWidth, alignment: .leading)
-                        VStack(alignment: .leading, spacing: 12) {
-                            directionMetric("云台水平", value: model.cameraPoseAvailable ? model.cameraPose.panDegrees : nil, color: Palette.warning)
-                                .frame(height: metricRowHeight, alignment: .topLeading)
-                            directionMetric("云台俯仰", value: model.cameraPoseAvailable ? model.cameraPose.tiltDegrees : nil, color: Palette.warning)
-                                .frame(height: metricRowHeight, alignment: .topLeading)
-                            cameraControlButton("云台回中", enabled: model.canRecenterCamera, action: model.recenterCamera)
+                        if model.tracking {
+                            touchGuardButton
+                                .transition(.opacity)
                         }
-                        .frame(width: columnWidth, alignment: .leading)
                     }
                 }
-                .frame(height: metricRowHeight * 2 + metricFooterHeight + 24)
+                .frame(height: metricRowHeight * 2 + metricFooterHeight + 24
+                       + (model.tracking ? followPresetButtonHeight + 8 : 0))
+                .clipped()
             }
         }
         .cardStyle()
@@ -274,14 +350,25 @@ struct ContentView: View {
 
     private var recordingIndicator: some View {
         let state = model.cameraRecordingIndicator
-        return TimelineView(.animation(minimumInterval: 0.5, paused: state != .recording || reduceMotion)) { context in
-            Circle()
-                .stroke(recordingIndicatorColor(state), lineWidth: 2)
-                .opacity(state == .recording && !reduceMotion
-                    && Int(context.date.timeIntervalSinceReferenceDate * 2) % 2 != 0 ? 0.2 : 1)
-                .frame(width: 12, height: 12)
+        return Group {
+            if state == .recording && !reduceMotion {
+                Circle()
+                    .stroke(Palette.recordingActive, lineWidth: 2)
+                    .phaseAnimator([false, true]) { content, expanded in
+                        content
+                            .opacity(expanded ? 1 : 0.35)
+                            .scaleEffect(expanded ? 1.06 : 0.94)
+                    } animation: { _ in
+                        .easeInOut(duration: 0.9)
+                    }
+            } else {
+                Circle()
+                    .stroke(recordingIndicatorColor(state), lineWidth: 2)
+            }
         }
         .frame(width: 12, height: 12)
+        .accessibilityElement(children: .ignore)
+        .accessibilityIdentifier("camera.recordingIndicator")
         .accessibilityLabel("相机录制状态")
         .accessibilityValue(recordingIndicatorValue(state))
     }
@@ -358,6 +445,11 @@ struct ContentView: View {
                     }
                     .buttonStyle(.plain)
                     .foregroundStyle(model.preset == preset ? Palette.accent : .primary)
+                }
+            }
+            .background {
+                GeometryReader { geometry in
+                    Color.clear.preference(key: FollowPresetButtonHeightKey.self, value: geometry.size.height)
                 }
             }
 
@@ -505,6 +597,14 @@ private struct SensorCard: View {
         case .streaming: "实时读取中"
         case .failed(let message): message
         }
+    }
+}
+
+private struct FollowPresetButtonHeightKey: PreferenceKey {
+    static let defaultValue: CGFloat = 0
+
+    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
+        value = max(value, nextValue())
     }
 }
 

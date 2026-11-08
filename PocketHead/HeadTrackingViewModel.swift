@@ -103,6 +103,7 @@ final class HeadTrackingViewModel: ObservableObject {
         realGimbal.onRecordingChange = { [weak self] in
             self?.cameraStateRevision &+= 1
         }
+        realGimbal.onRecordingFailure = { [weak self] message in self?.showErrorToast(message) }
         #if targetEnvironment(simulator)
         demoHead = true
         demoCamera = true
@@ -127,6 +128,26 @@ final class HeadTrackingViewModel: ObservableObject {
         }
     }
     var cameraIsConnected: Bool { realGimbal.phase == .connected }
+    var showsRecordingControl: Bool { !demoCamera && cameraIsConnected }
+    var canToggleRecording: Bool { showsRecordingControl && realGimbal.canControlRecording }
+    var isChangingRecording: Bool { realGimbal.recordingTarget != nil }
+    var recordingButtonTitle: String {
+        if let target = realGimbal.recordingTarget { return target ? "正在开始" : "正在停止" }
+        switch cameraRecordingIndicator {
+        case .recording: return "停止录制"
+        case .idle: return "开始录制"
+        case .unknown: return "读取状态"
+        case .disconnected: return "开始录制"
+        }
+    }
+
+    func toggleRecording() {
+        guard canToggleRecording else { return }
+        if !realGimbal.requestRecordingToggle() {
+            showErrorToast("相机录制状态尚未就绪，请稍后重试。")
+        }
+    }
+
     var cameraRecordingIndicator: CameraRecordingIndicator {
         guard !demoCamera, cameraIsConnected else { return .disconnected }
         guard let isRecording = realGimbal.isRecording else { return .unknown }

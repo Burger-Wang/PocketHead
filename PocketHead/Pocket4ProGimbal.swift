@@ -22,19 +22,21 @@ final class Pocket4ProGimbal: HeadTrackGimbal {
     let isSimulation = false
     var onPhaseChange: (() -> Void)?
     var onRecordingChange: (() -> Void)?
+    var onRecordingFailure: ((String) -> Void)?
     private(set) var phase: Phase = .disconnected {
         didSet {
             guard phase != oldValue else { return }
             waitingSince = phase == .waitingForAttitude
                 ? ProcessInfo.processInfo.systemUptime : nil
-            if oldValue == .connected && phase != .connected { isRecording = nil }
+            if oldValue == .connected && phase != .connected { resetRecording() }
             onPhaseChange?()
         }
     }
-    private(set) var isRecording: Bool? {
-        didSet {
-            if isRecording != oldValue { onRecordingChange?() }
-        }
+    var isRecording: Bool? { recordingState.isRecording }
+    var recordingTarget: Bool? { recordingState.pending?.target }
+    var canControlRecording: Bool {
+        phase == .connected && link?.isFlowHealthy == true
+            && recordingState.canToggle(at: ProcessInfo.processInfo.systemUptime)
     }
 
     var title: String {
@@ -79,6 +81,8 @@ final class Pocket4ProGimbal: HeadTrackGimbal {
     private var nextStreamToken: UInt64 = 0
     private var nativePitchAtCalibration: Double?
     private var tiltAtCalibration: Double?
+    private var recordingState = RecordingControlState()
+    private var recordingExchange: DjiAppleControlExchange?
 
     var observation: GimbalObservation? {
         guard phase == .connected, link?.isFlowHealthy == true,
@@ -354,7 +358,7 @@ final class Pocket4ProGimbal: HeadTrackGimbal {
         link = nil
         liveWaypoint = nil
         receivedAt = nil
-        isRecording = nil
+        resetRecording()
         phase = .disconnected
     }
 
@@ -372,6 +376,79 @@ final class Pocket4ProGimbal: HeadTrackGimbal {
             disconnect()
             phase = .failed("控制握手成功，但 5 秒内没有收到云台姿态。请检查相机是否处于可控制状态后重试。")
         }
+        let previousRecording = isRecording
+        let previousTarget = recordingTarget
+        let failure = recordingState.advance(at: now)
+        if recordingState.pending == nil { retireRecordingExchange() }
+        notifyRecordingChange(previousRecording: previousRecording, previousTarget: previousTarget)
+        if let failure {
+            onRecordingFailure?(failure == .commandTimedOut
+                ? "相机未确认录制状态，请检查相机屏幕后重试。"
+                : "相机录制状态回报已中断，请确认相机状态后重试。")
+        }
+    }
+
+    @discardableResult
+    func requestRecordingToggle() -> Bool {
+        guard canControlRecording, let driver = link,
+              let request = recordingState.requestToggle(at: ProcessInfo.processInfo.systemUptime) else { return false }
+        retireRecordingExchange()
+        onRecordingChange?()
+        let attempt = generation
+        let exchange = DjiAppleControlExchange(
+            endpoint: .init(datalink: driver),
+            context: { [weak self, weak driver] in
+                guard let self, let driver else { return .init() }
+                return .init(canTransmit: self.generation == attempt && self.link === driver
+                    && self.phase == .connected && driver.isFlowHealthy)
+            },
+            event: { [weak self] event in
+                guard let self, self.generation == attempt else { return }
+                if case .refused(_, let message) = event {
+                    self.failRecording(requestID: request.id, message: "相机拒绝录制指令：\(message)")
+                }
+            }
+        )
+        recordingExchange = exchange
+        let frame = request.target ? Commands.recordStart() : Commands.recordStop()
+        let admission = DJICommandAdmission(owner: driver.commandOwner, isCurrent: { true })
+        // These are explicit start/stop commands. Do not retry a start after it
+        // may already have reached the camera, and do not infer success from ACK.
+        exchange.submit(.init(frame, name: request.target ? "开始录制" : "停止录制",
+                              retransmits: false, admission: admission)) { [weak self] event in
+            guard let self, self.generation == attempt else { return }
+            switch event {
+            case .failed, .settled(false):
+                self.failRecording(requestID: request.id, message: "录制指令未能完成，请检查相机模式和连接后重试。")
+            case .stage, .settled(true):
+                break
+            }
+        }
+        return true
+    }
+
+    private func failRecording(requestID: UInt64, message: String) {
+        guard recordingState.fail(requestID: requestID) else { return }
+        retireRecordingExchange()
+        onRecordingChange?()
+        onRecordingFailure?(message)
+    }
+
+    private func retireRecordingExchange() {
+        recordingExchange?.retire(DjiAppleControlExchange.Error.disconnected)
+        recordingExchange = nil
+    }
+
+    private func resetRecording() {
+        let previousRecording = isRecording
+        let previousTarget = recordingTarget
+        recordingState.reset()
+        retireRecordingExchange()
+        notifyRecordingChange(previousRecording: previousRecording, previousTarget: previousTarget)
+    }
+
+    private func notifyRecordingChange(previousRecording: Bool?, previousTarget: Bool?) {
+        if previousRecording != isRecording || previousTarget != recordingTarget { onRecordingChange?() }
     }
 
     func beginHeadTracking() -> Bool {
@@ -449,9 +526,14 @@ final class Pocket4ProGimbal: HeadTrackGimbal {
         if frame.cmdSet == 0x02, frame.cmdId == 0x80 {
             var status = CameraStatus()
             if CameraStatusDecoder.apply(frame, to: &status), status.recordingReported {
-                isRecording = status.isRecording
+                let previousRecording = isRecording
+                let previousTarget = recordingTarget
+                recordingState.observe(status.isRecording, at: ProcessInfo.processInfo.systemUptime)
+                if recordingState.pending == nil { retireRecordingExchange() }
+                notifyRecordingChange(previousRecording: previousRecording, previousTarget: previousTarget)
             }
         }
+        recordingExchange?.receive(frame)
         guard frame.cmdSet == 0x04, frame.cmdId == 0x05,
               let waypoint = GimbalWaypoint.from(
                   yawTenth: GimbalStick.yawTenthDeg(frame.payload),

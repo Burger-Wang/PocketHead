@@ -22,6 +22,7 @@
 		B0000000000000000000000D /* TouchGuardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0000000000000000000000E /* TouchGuardView.swift */; };
 		B0000000000000000000000E /* TouchGuardController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0000000000000000000000F /* TouchGuardController.swift */; };
 		B0000000000000000000000F /* TouchGuardState.swift in Sources */ = {isa = PBXBuildFile; fileRef = C00000000000000000000010 /* TouchGuardState.swift */; };
+		B00000000000000000000010 /* RecordingControlState.swift in Sources */ = {isa = PBXBuildFile; fileRef = C00000000000000000000011 /* RecordingControlState.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -40,6 +41,7 @@
 		C0000000000000000000000E /* TouchGuardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TouchGuardView.swift; sourceTree = "<group>"; };
 		C0000000000000000000000F /* TouchGuardController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TouchGuardController.swift; sourceTree = "<group>"; };
 		C00000000000000000000010 /* TouchGuardState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TouchGuardState.swift; sourceTree = "<group>"; };
+		C00000000000000000000011 /* RecordingControlState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecordingControlState.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -97,6 +99,7 @@
 			children = (
 				C00000000000000000000006 /* HeadTracking.swift */,
 				C00000000000000000000010 /* TouchGuardState.swift */,
+				C00000000000000000000011 /* RecordingControlState.swift */,
 			);
 			path = PocketHeadCore;
 			sourceTree = "<group>";
@@ -201,6 +204,7 @@
 				B0000000000000000000000D /* TouchGuardView.swift in Sources */,
 				B0000000000000000000000E /* TouchGuardController.swift in Sources */,
 				B0000000000000000000000F /* TouchGuardState.swift in Sources */,
+				B00000000000000000000010 /* RecordingControlState.swift in Sources */,
 				B00000000000000000000006 /* HeadTracking.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
