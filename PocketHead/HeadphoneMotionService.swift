@@ -20,8 +20,11 @@ final class HeadphoneMotionService: NSObject, ObservableObject {
     }
 
     @Published private(set) var status: Status = .unavailable
-    @Published private(set) var latestSample: HeadMotionSample?
+    // The control loop reads each sample directly. Publishing every motion frame
+    // would invalidate SensorCard even though it only displays stream status.
+    private(set) var latestSample: HeadMotionSample?
     var onFailure: ((String) -> Void)?
+    var onSample: (() -> Void)?
 
     private let manager = CMHeadphoneMotionManager()
     private let deliveryQueue: OperationQueue = {
@@ -146,11 +149,12 @@ final class HeadphoneMotionService: NSObject, ObservableObject {
                 if let sample {
                     if self.latestSample == nil { self.trace("first motion sample") }
                     self.latestSample = sample
-                    self.status = .streaming
+                    if self.status != .streaming { self.status = .streaming }
                     self.lastReportedFailure = nil
                     if !self.manager.isConnectionStatusActive {
                         self.manager.startConnectionStatusUpdates()
                     }
+                    self.onSample?()
                 } else if let errorMessage {
                     self.trace("motion error=\(errorMessage)")
                     self.latestSample = nil

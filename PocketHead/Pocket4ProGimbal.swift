@@ -8,6 +8,8 @@ import OpenCineMotion
 /// attitude are required before targets can be sent.
 @MainActor
 final class Pocket4ProGimbal: HeadTrackGimbal {
+    private static let backgroundCommandDuration: TimeInterval = 0.2
+
     enum Phase: Equatable {
         case disconnected
         case opening
@@ -21,12 +23,19 @@ final class Pocket4ProGimbal: HeadTrackGimbal {
 
     let isSimulation = false
     var onPhaseChange: (() -> Void)?
+    var onRecordingChange: (() -> Void)?
     private(set) var phase: Phase = .disconnected {
         didSet {
             guard phase != oldValue else { return }
             waitingSince = phase == .waitingForAttitude
                 ? ProcessInfo.processInfo.systemUptime : nil
+            if oldValue == .connected && phase != .connected { isRecording = nil }
             onPhaseChange?()
+        }
+    }
+    private(set) var isRecording: Bool? {
+        didSet {
+            if isRecording != oldValue { onRecordingChange?() }
         }
     }
 
@@ -72,6 +81,7 @@ final class Pocket4ProGimbal: HeadTrackGimbal {
     private var nextStreamToken: UInt64 = 0
     private var nativePitchAtCalibration: Double?
     private var tiltAtCalibration: Double?
+    var usesBackgroundSmoothing = false
 
     var observation: GimbalObservation? {
         guard phase == .connected, link?.isFlowHealthy == true,
@@ -110,7 +120,8 @@ final class Pocket4ProGimbal: HeadTrackGimbal {
         let driver = DjiAppleDatalink(
             port: UInt16(camera.datalinkPort), tcpPoke: camera.tcpPoke,
             pairingToken: camera.pairingToken,
-            subscriptionKeys: Commands.subscriptionKeys(for: camera)
+            subscriptionKeys: Commands.subscriptionKeys(for: camera),
+            assembleLiveVideo: false
         )
         link = driver
         driver.onStatusFrame = { [weak self, weak driver] frame in
@@ -346,6 +357,7 @@ final class Pocket4ProGimbal: HeadTrackGimbal {
         link = nil
         liveWaypoint = nil
         receivedAt = nil
+        isRecording = nil
         phase = .disconnected
     }
 
@@ -396,7 +408,9 @@ final class Pocket4ProGimbal: HeadTrackGimbal {
         )
         guard GimbalMoveEngine.canSendNativeTarget(from: live, to: waypoint),
               let frame = Commands.gimbalTimedTarget(
-                  waypoint: waypoint, duration: HeadTrackNative.commandDuration
+                  waypoint: waypoint,
+                  duration: usesBackgroundSmoothing
+                      ? Self.backgroundCommandDuration : HeadTrackNative.commandDuration
               ), link.noteNativeTarget(frame, token: token) else {
             endHeadTracking()
             return false
@@ -423,7 +437,25 @@ final class Pocket4ProGimbal: HeadTrackGimbal {
         return false
     }
 
+    @discardableResult
+    func flip() -> Bool {
+        endHeadTracking()
+        guard phase == .connected, observation != nil,
+              let link, link.isFlowHealthy else { return false }
+        let admission = DJICommandAdmission(owner: link.commandOwner, isCurrent: { true })
+        if case .queued = link.send(Commands.gimbalFlip(), admission: admission) {
+            return true
+        }
+        return false
+    }
+
     private func receive(_ frame: Duml.Frame) {
+        if frame.cmdSet == 0x02, frame.cmdId == 0x80 {
+            var status = CameraStatus()
+            if CameraStatusDecoder.apply(frame, to: &status), status.recordingReported {
+                isRecording = status.isRecording
+            }
+        }
         guard frame.cmdSet == 0x04, frame.cmdId == 0x05,
               let waypoint = GimbalWaypoint.from(
                   yawTenth: GimbalStick.yawTenthDeg(frame.payload),

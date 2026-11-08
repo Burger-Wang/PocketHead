@@ -150,6 +150,25 @@ final class SoftAPVideoAssembler: Sendable {
         }
     }
 
+    /// Head-tracking clients need the video transport sequence for ACK group 0,
+    /// but do not consume decoded access units. Keep the receive clock and cursor
+    /// without copying or reassembling the HEVC payload.
+    func ingestCursorOnly(_ datagram: [UInt8]) -> Ingest {
+        lock.withLock { state in
+            state.packets += 1
+            state.packetTiming.note(at: ProcessInfo.processInfo.systemUptime)
+            state.lastPacket = Date()
+            if let seq = DumlTransport.transportSeq(datagram) {
+                state.peerCursor = seq
+                state.hasVideoSeq = true
+                state.hasGroup0 = true
+            }
+            let first = !state.loggedFirst
+            if first { state.loggedFirst = true }
+            return Ingest(firstPacket: first)
+        }
+    }
+
     private static func hasRandomAccess(_ au: [UInt8], codec: LiveVideoCodec) -> Bool {
         Hevc.nalHeaders(au).contains { byte in
             codec == .avc ? Avc.nalType(byte) == Avc.idr : Hevc.isIRAP(Hevc.nalType(byte))

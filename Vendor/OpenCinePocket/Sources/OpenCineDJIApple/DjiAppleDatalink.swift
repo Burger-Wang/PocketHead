@@ -20,6 +20,7 @@
         /// Thread-safe admission identity for this exact endpoint and its UDP replacement epochs.
         nonisolated public let commandOwner = DJICommandOwner()
         private let subscriptionKeys: [String]
+        private let assembleLiveVideo: Bool
         private let stationHost: String?
         private let stationHotspot: Bool
         #if DEBUG
@@ -251,11 +252,13 @@
         public init(
             port: UInt16, tcpPoke: Bool, pairingToken: String, stationHost: String? = nil,
             stationHotspot: Bool = false, subscriptionKeys: [String] = Commands.subscriptionKeys,
+            assembleLiveVideo: Bool = true,
             host: DjiAppleTransportHost = .init()
         ) {
             self.host = host
             self.log = Logger(subsystem: host.logSubsystem, category: "datalink")
             self.subscriptionKeys = subscriptionKeys
+            self.assembleLiveVideo = assembleLiveVideo
             self.stationHost = stationHost
             self.stationHotspot = stationHotspot
             self.port = port
@@ -1611,6 +1614,7 @@
             // is scheduled on `q` immediately. `startReceiveLoop()` is MainActor-isolated - calling
             // it from the UDP callback hopped to main and froze the feed when the UI was busy.
             let assembler = videoAssembler
+            let assembleVideo = assembleLiveVideo
             let handshake = handshakeAdmission
             let inbound = handshakeInbound
             let gate = videoGate
@@ -1711,7 +1715,8 @@
                             }
                             host.debugVideo?.sourceDelivered(1, 0)
                         #endif
-                        let assembled = assembler.ingest(bytes)
+                        let assembled = assembleVideo
+                            ? assembler.ingest(bytes) : assembler.ingestCursorOnly(bytes)
                         #if DEBUG
                             if assembled.accessUnit != nil {
                                 host.debugVideo?.sourceObserved(0, 1)
