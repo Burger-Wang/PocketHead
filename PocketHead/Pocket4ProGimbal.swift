@@ -8,8 +8,6 @@ import OpenCineMotion
 /// attitude are required before targets can be sent.
 @MainActor
 final class Pocket4ProGimbal: HeadTrackGimbal {
-    private static let backgroundCommandDuration: TimeInterval = 0.2
-
     enum Phase: Equatable {
         case disconnected
         case opening
@@ -81,7 +79,6 @@ final class Pocket4ProGimbal: HeadTrackGimbal {
     private var nextStreamToken: UInt64 = 0
     private var nativePitchAtCalibration: Double?
     private var tiltAtCalibration: Double?
-    var usesBackgroundSmoothing = false
 
     var observation: GimbalObservation? {
         guard phase == .connected, link?.isFlowHealthy == true,
@@ -409,8 +406,7 @@ final class Pocket4ProGimbal: HeadTrackGimbal {
         guard GimbalMoveEngine.canSendNativeTarget(from: live, to: waypoint),
               let frame = Commands.gimbalTimedTarget(
                   waypoint: waypoint,
-                  duration: usesBackgroundSmoothing
-                      ? Self.backgroundCommandDuration : HeadTrackNative.commandDuration
+                  duration: HeadTrackNative.commandDuration
               ), link.noteNativeTarget(frame, token: token) else {
             endHeadTracking()
             return false

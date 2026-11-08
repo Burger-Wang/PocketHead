@@ -24,7 +24,6 @@ final class HeadphoneMotionService: NSObject, ObservableObject {
     // would invalidate SensorCard even though it only displays stream status.
     private(set) var latestSample: HeadMotionSample?
     var onFailure: ((String) -> Void)?
-    var onSample: (() -> Void)?
 
     private let manager = CMHeadphoneMotionManager()
     private let deliveryQueue: OperationQueue = {
@@ -154,7 +153,6 @@ final class HeadphoneMotionService: NSObject, ObservableObject {
                     if !self.manager.isConnectionStatusActive {
                         self.manager.startConnectionStatusUpdates()
                     }
-                    self.onSample?()
                 } else if let errorMessage {
                     self.trace("motion error=\(errorMessage)")
                     self.latestSample = nil

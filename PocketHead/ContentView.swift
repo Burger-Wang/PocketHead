@@ -30,9 +30,15 @@ private enum Palette {
 
 struct ContentView: View {
     @ObservedObject var model: HeadTrackingViewModel
+    @ObservedObject private var touchGuard: TouchGuardController
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @ScaledMetric(relativeTo: .body) private var metricRowHeight: CGFloat = 49
     @ScaledMetric(relativeTo: .body) private var metricFooterHeight: CGFloat = 44
+
+    init(model: HeadTrackingViewModel) {
+        self.model = model
+        touchGuard = model.touchGuard
+    }
 
     var body: some View {
         NavigationStack {
@@ -54,6 +60,7 @@ struct ContentView: View {
                         .padding(.horizontal, 4)
                 }
                 .padding(18)
+                .accessibilityHidden(touchGuard.isPresented)
             }
             .overlay(alignment: .top) {
                 if let message = model.errorToast {
@@ -88,6 +95,7 @@ struct ContentView: View {
                     .padding(.horizontal, 18)
                     .padding(.top, 8)
                     .padding(.bottom, 4)
+                    .accessibilityHidden(touchGuard.isPresented)
                 }
             }
             .background(Palette.background.ignoresSafeArea())
@@ -95,6 +103,17 @@ struct ContentView: View {
             .navigationBarTitleDisplayMode(.inline)
         }
         .tint(Palette.accent)
+        .disabled(touchGuard.isPresented)
+        .allowsHitTesting(!touchGuard.isPresented)
+        .accessibilityHidden(touchGuard.isPresented)
+        .overlay {
+            if touchGuard.isPresented {
+                TouchGuardView(controller: touchGuard)
+                    .ignoresSafeArea()
+            }
+        }
+        .defersSystemGestures(on: touchGuard.isPresented ? .all : [])
+        .onDisappear { model.suspend() }
     }
 
     private var sensorCard: some View {
@@ -145,6 +164,29 @@ struct ContentView: View {
     }
 
     private var trackingControls: some View {
+        VStack(spacing: 10) {
+            trackingActions
+            if model.tracking {
+                Button {
+                    if model.tracking { touchGuard.enter() }
+                } label: {
+                    Label("防误触", systemImage: "hand.raised")
+                        .font(.subheadline.weight(.semibold))
+                        .frame(maxWidth: .infinity, minHeight: 48)
+                        .background(Palette.card, in: RoundedRectangle(cornerRadius: 14))
+                        .overlay {
+                            RoundedRectangle(cornerRadius: 14)
+                                .stroke(Palette.border, lineWidth: 1)
+                        }
+                }
+                .buttonStyle(.plain)
+                .accessibilityHint("遮挡页面操作并保持屏幕常亮，长按一点五秒可退出")
+                .accessibilityIdentifier("touchGuard.enter")
+            }
+        }
+    }
+
+    private var trackingActions: some View {
         HStack(spacing: 12) {
             Button(action: model.calibrate) {
                 Label(model.tracking ? "重新校准前方" : "校准前方并开始", systemImage: "scope")
