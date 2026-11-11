@@ -83,6 +83,14 @@ final class Pocket4ProGimbal: HeadTrackGimbal {
     private var tiltAtCalibration: Double?
     private var recordingState = RecordingControlState()
     private var recordingExchange: DjiAppleControlExchange?
+    private let preview: PocketLivePreviewController
+    private var previewModel: CameraModel?
+    private var previewEnabled = false
+
+    init(preview: PocketLivePreviewController) {
+        self.preview = preview
+        preview.onRequestKeyframe = { [weak self] in self?.requestLivePicture() ?? false }
+    }
 
     var observation: GimbalObservation? {
         guard phase == .connected, link?.isFlowHealthy == true,
@@ -122,15 +130,19 @@ final class Pocket4ProGimbal: HeadTrackGimbal {
             port: UInt16(camera.datalinkPort), tcpPoke: camera.tcpPoke,
             pairingToken: camera.pairingToken,
             subscriptionKeys: Commands.subscriptionKeys(for: camera),
-            assembleLiveVideo: false
+            assembleLiveVideo: true
         )
         link = driver
         driver.onStatusFrame = { [weak self, weak driver] frame in
             guard let self, self.generation == attempt, self.link === driver else { return }
             self.receive(frame)
         }
+        bindPreview(to: driver, attempt: attempt, model: camera)
         do {
-            try await driver.open()
+            try await driver.open(afterHandshake: { [weak self, weak driver] in
+                guard let self, self.generation == attempt, self.link === driver else { return }
+                _ = self.requestLivePicture()
+            })
             guard generation == attempt, link === driver else { return }
             phase = liveWaypoint == nil ? .waitingForAttitude : .connected
             heartbeat = Task { [weak self, weak driver] in
@@ -146,6 +158,8 @@ final class Pocket4ProGimbal: HeadTrackGimbal {
             driver.onStatusFrame = nil
             driver.close()
             link = nil
+            preview.disconnect()
+            previewEnabled = false
             if case DjiAppleDatalink.DatalinkError.localNetworkDenied = error {
                 phase = .failed("请在 iPhone 设置中允许「Pocket动态追踪」访问本地网络。")
             } else {
@@ -269,6 +283,8 @@ final class Pocket4ProGimbal: HeadTrackGimbal {
                         self.link?.onStatusFrame = nil
                         self.link?.close()
                         self.link = nil
+                        self.preview.disconnect()
+                        self.previewEnabled = false
                         exchange?.endpoint = .init(bluetooth: ble, datalink: nil)
                         sessionHeartbeat?.endpoint = .init(bluetooth: ble, datalink: nil)
                         return
@@ -279,6 +295,7 @@ final class Pocket4ProGimbal: HeadTrackGimbal {
                               self.link === driver else { return }
                         self.receive(frame)
                     }
+                    self.bindPreview(to: driver, attempt: attempt, model: found.model)
                     exchange?.endpoint = .init(bluetooth: ble, datalink: driver)
                     sessionHeartbeat?.endpoint = .init(bluetooth: ble, datalink: driver)
                 },
@@ -286,6 +303,7 @@ final class Pocket4ProGimbal: HeadTrackGimbal {
                     guard let self, current.isCurrent, self.generation == attempt,
                           self.link === endpoint else { return }
                     self.phase = self.liveWaypoint == nil ? .waitingForAttitude : .connected
+                    _ = self.requestLivePicture()
                 }
             ),
             event: { [weak self] event in
@@ -338,6 +356,9 @@ final class Pocket4ProGimbal: HeadTrackGimbal {
 
     func disconnect() {
         generation &+= 1
+        preview.disconnect()
+        previewEnabled = false
+        previewModel = nil
         endHeadTracking()
         heartbeat?.cancel()
         heartbeat = nil
@@ -360,6 +381,33 @@ final class Pocket4ProGimbal: HeadTrackGimbal {
         receivedAt = nil
         resetRecording()
         phase = .disconnected
+    }
+
+    private func bindPreview(to driver: DjiAppleDatalink, attempt: UInt64, model: CameraModel?) {
+        previewModel = model
+        previewEnabled = false
+        let videoGeneration = preview.connect()
+        driver.onAccessUnit = { [weak self, weak driver] bytes in
+            guard let self, self.generation == attempt, self.link === driver else { return }
+            self.preview.receive(bytes, generation: videoGeneration)
+        }
+        driver.onVideoDiscontinuity = { [weak self, weak driver] in
+            guard let self, self.generation == attempt, self.link === driver else { return }
+            self.preview.interrupt(generation: videoGeneration)
+        }
+    }
+
+    private func requestLivePicture() -> Bool {
+        guard let driver = link, driver.isFlowHealthy else { return false }
+        if !previewEnabled, previewModel?.sendsLiveViewPrepare != false {
+            let admission = DJICommandAdmission(owner: driver.commandOwner, isCurrent: { true })
+            guard case .queued = driver.sendUntracked(Commands.liveViewPrepare(), admission: admission) else {
+                return false
+            }
+        }
+        driver.startLiveView(receiver: previewModel?.liveViewEnableReceiver ?? 0x08)
+        previewEnabled = true
+        return true
     }
 
     func advance(elapsed: TimeInterval, now: TimeInterval) {

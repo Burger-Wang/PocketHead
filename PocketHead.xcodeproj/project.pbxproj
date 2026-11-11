@@ -23,6 +23,10 @@
 		B0000000000000000000000E /* TouchGuardController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0000000000000000000000F /* TouchGuardController.swift */; };
 		B0000000000000000000000F /* TouchGuardState.swift in Sources */ = {isa = PBXBuildFile; fileRef = C00000000000000000000010 /* TouchGuardState.swift */; };
 		B00000000000000000000010 /* RecordingControlState.swift in Sources */ = {isa = PBXBuildFile; fileRef = C00000000000000000000011 /* RecordingControlState.swift */; };
+		B00000000000000000000011 /* PocketLivePreviewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C00000000000000000000012 /* PocketLivePreviewController.swift */; };
+		B00000000000000000000012 /* PocketLivePreviewView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C00000000000000000000013 /* PocketLivePreviewView.swift */; };
+		B00000000000000000000013 /* LivePreviewState.swift in Sources */ = {isa = PBXBuildFile; fileRef = C00000000000000000000014 /* LivePreviewState.swift */; };
+		B00000000000000000000014 /* LiveVideoSampleBuilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = C00000000000000000000015 /* LiveVideoSampleBuilder.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -42,6 +46,10 @@
 		C0000000000000000000000F /* TouchGuardController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TouchGuardController.swift; sourceTree = "<group>"; };
 		C00000000000000000000010 /* TouchGuardState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TouchGuardState.swift; sourceTree = "<group>"; };
 		C00000000000000000000011 /* RecordingControlState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecordingControlState.swift; sourceTree = "<group>"; };
+		C00000000000000000000012 /* PocketLivePreviewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PocketLivePreviewController.swift; sourceTree = "<group>"; };
+		C00000000000000000000013 /* PocketLivePreviewView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PocketLivePreviewView.swift; sourceTree = "<group>"; };
+		C00000000000000000000014 /* LivePreviewState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LivePreviewState.swift; sourceTree = "<group>"; };
+		C00000000000000000000015 /* LiveVideoSampleBuilder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiveVideoSampleBuilder.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -79,6 +87,8 @@
 				C0000000000000000000000D /* Pocket4ProGimbal.swift */,
 				C0000000000000000000000E /* TouchGuardView.swift */,
 				C0000000000000000000000F /* TouchGuardController.swift */,
+				C00000000000000000000013 /* PocketLivePreviewView.swift */,
+				C00000000000000000000012 /* PocketLivePreviewController.swift */,
 				C0000000000000000000000B /* Assets.xcassets */,
 				C00000000000000000000007 /* Info.plist */,
 				C0000000000000000000000C /* PocketHead.entitlements */,
@@ -100,6 +110,8 @@
 				C00000000000000000000006 /* HeadTracking.swift */,
 				C00000000000000000000010 /* TouchGuardState.swift */,
 				C00000000000000000000011 /* RecordingControlState.swift */,
+				C00000000000000000000015 /* LiveVideoSampleBuilder.swift */,
+				C00000000000000000000014 /* LivePreviewState.swift */,
 			);
 			path = PocketHeadCore;
 			sourceTree = "<group>";
@@ -205,6 +217,10 @@
 				B0000000000000000000000E /* TouchGuardController.swift in Sources */,
 				B0000000000000000000000F /* TouchGuardState.swift in Sources */,
 				B00000000000000000000010 /* RecordingControlState.swift in Sources */,
+				B00000000000000000000014 /* LiveVideoSampleBuilder.swift in Sources */,
+				B00000000000000000000013 /* LivePreviewState.swift in Sources */,
+				B00000000000000000000012 /* PocketLivePreviewView.swift in Sources */,
+				B00000000000000000000011 /* PocketLivePreviewController.swift in Sources */,
 				B00000000000000000000006 /* HeadTracking.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;

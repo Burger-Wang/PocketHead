@@ -11,6 +11,7 @@ enum CameraRecordingIndicator {
 final class HeadTrackingViewModel: ObservableObject {
     let sensor = HeadphoneMotionService()
     let touchGuard = TouchGuardController()
+    let cameraPreview = PocketLivePreviewController()
 
     @Published private(set) var tracking = false {
         didSet {
@@ -57,7 +58,7 @@ final class HeadTrackingViewModel: ObservableObject {
 
     private var engine = HeadTrackingEngine(limits: .referencePocket4Pro)
     private let simulatedGimbal = SimulatedGimbal()
-    private let realGimbal = Pocket4ProGimbal()
+    private let realGimbal: Pocket4ProGimbal
     private var gimbal: any HeadTrackGimbal { demoCamera ? simulatedGimbal : realGimbal }
     @Published private var cameraStateRevision: UInt64 = 0
     private var connectTask: Task<Void, Never>?
@@ -69,6 +70,7 @@ final class HeadTrackingViewModel: ObservableObject {
     private var calibrationCameraPose = GimbalPose(panDegrees: 0, tiltDegrees: 0)
 
     init() {
+        realGimbal = Pocket4ProGimbal(preview: cameraPreview)
         sensor.onFailure = { [weak self] message in
             if self?.tracking == true { self?.stopTracking() }
             self?.reportError("AirPods 姿态读取失败：\(message)")

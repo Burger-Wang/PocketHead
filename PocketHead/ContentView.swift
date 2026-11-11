@@ -31,6 +31,7 @@ private enum Palette {
 struct ContentView: View {
     @ObservedObject var model: HeadTrackingViewModel
     @ObservedObject private var touchGuard: TouchGuardController
+    @ObservedObject private var cameraPreview: PocketLivePreviewController
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @ScaledMetric(relativeTo: .body) private var metricRowHeight: CGFloat = 49
@@ -40,6 +41,7 @@ struct ContentView: View {
     init(model: HeadTrackingViewModel) {
         self.model = model
         touchGuard = model.touchGuard
+        cameraPreview = model.cameraPreview
     }
 
     var body: some View {
@@ -50,6 +52,7 @@ struct ContentView: View {
                         sensorCard
                         cameraCard
                     }
+                    cameraPreviewFrame
                     directionCard
                     trackingControls
                     tuningCard
@@ -173,6 +176,67 @@ struct ContentView: View {
 
     private var trackingLayoutAnimation: Animation? {
         reduceMotion ? nil : .easeInOut(duration: 0.25)
+    }
+
+    private var cameraPreviewFrame: some View {
+        Color.black
+            .aspectRatio(16.0 / 9.0, contentMode: .fit)
+            .overlay {
+                ZStack {
+                    PocketLivePreviewView(displayLayer: cameraPreview.displayLayer)
+                        .accessibilityHidden(true)
+                    if model.demoCamera || cameraPreview.phase != .live {
+                        Color.black
+                        VStack(spacing: 10) {
+                            if !dynamicTypeSize.isAccessibilitySize {
+                                if !reduceMotion && !model.demoCamera
+                                    && (model.cameraIsConnecting || cameraPreview.phase == .waitingForPicture) {
+                                    ProgressView().tint(.white.opacity(0.75))
+                                } else {
+                                    Image(systemName: "video.slash")
+                                        .font(.system(size: 28, weight: .regular))
+                                        .accessibilityHidden(true)
+                                }
+                            }
+                            Text(cameraPreviewMessage)
+                                .font(.subheadline)
+                                .multilineTextAlignment(.center)
+                                .lineLimit(2)
+                                .minimumScaleFactor(0.5)
+                            if !model.demoCamera && (cameraPreview.phase == .stalled || cameraPreview.phase == .failed) {
+                                Button("重试画面", action: cameraPreview.retry)
+                                    .font(.caption.weight(.semibold))
+                                    .padding(.horizontal, 16)
+                                    .frame(minHeight: 44)
+                                    .background(.white.opacity(0.15), in: Capsule())
+                                    .foregroundStyle(.white)
+                                    .disabled(!cameraPreview.canRetry)
+                                    .opacity(cameraPreview.canRetry ? 1 : 0.5)
+                                    .accessibilityIdentifier("camera.preview.retry")
+                            }
+                        }
+                        .foregroundStyle(.white.opacity(0.75))
+                        .padding(18)
+                    }
+                }
+            }
+            .clipShape(RoundedRectangle(cornerRadius: 12))
+            .accessibilityElement(children: .contain)
+            .accessibilityLabel("相机画面")
+            .accessibilityValue(cameraPreviewMessage)
+            .accessibilityIdentifier("camera.preview.viewport")
+    }
+
+    private var cameraPreviewMessage: String {
+        if model.demoCamera { return "模拟模式下暂无相机画面" }
+        if let message = cameraPreview.failureMessage { return message }
+        switch cameraPreview.phase {
+        case .disconnected: return model.cameraIsConnecting ? "正在连接 Pocket" : "连接 Pocket 后查看画面"
+        case .waitingForPicture: return "正在等待 Pocket 画面"
+        case .live: return "Pocket 实时画面"
+        case .stalled: return "画面中断，正在等待关键帧"
+        case .failed: return "暂未收到画面，请重试"
+        }
     }
 
     private var touchGuardButton: some View {

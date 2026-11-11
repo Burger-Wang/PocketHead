@@ -25,7 +25,7 @@
 	<key>NSBluetoothAlwaysUsageDescription</key>
 	<string>发现并配对 Pocket 4 Pro，以建立相机控制连接。</string>
 	<key>NSLocalNetworkUsageDescription</key>
-	<string>连接 Pocket 4 Pro 并发送云台控制指令。</string>
+	<string>连接 Pocket 4 Pro，接收实时画面并发送云台和录像控制指令。</string>
 	<key>NSMotionUsageDescription</key>
 	<string>读取 AirPods 的头部姿态，将转头和抬头动作映射到 Pocket 4 Pro 云台。</string>
 	<key>UIApplicationSceneManifest</key>
