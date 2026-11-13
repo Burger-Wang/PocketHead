@@ -11,6 +11,7 @@ enum CameraRecordingIndicator {
 final class HeadTrackingViewModel: ObservableObject {
     let sensor = HeadphoneMotionService()
     let touchGuard = TouchGuardController()
+    let directionDisplay = DirectionDisplayModel()
     let cameraPreview = PocketLivePreviewController()
 
     @Published private(set) var tracking = false {
@@ -20,9 +21,9 @@ final class HeadTrackingViewModel: ObservableObject {
     }
     @Published private(set) var statusMessage = "连接 AirPods 后，面向前方并校准。"
     @Published private(set) var errorToast: String?
-    @Published private(set) var cameraPose = GimbalPose(panDegrees: 0, tiltDegrees: 0)
-    @Published private(set) var cameraPoseAvailable = false
-    @Published private(set) var look = LookAngles.zero
+    private(set) var cameraPose = GimbalPose(panDegrees: 0, tiltDegrees: 0)
+    private(set) var cameraPoseAvailable = false
+    private(set) var look = LookAngles.zero
     @Published private(set) var preset: FollowPreset? = .standard
 
     @Published var demoHead = false {
@@ -106,6 +107,8 @@ final class HeadTrackingViewModel: ObservableObject {
             self?.cameraStateRevision &+= 1
         }
         realGimbal.onRecordingFailure = { [weak self] message in self?.showErrorToast(message) }
+        realGimbal.onZoomChange = { [weak self] in self?.cameraStateRevision &+= 1 }
+        realGimbal.onZoomFailure = { [weak self] message in self?.showErrorToast(message) }
         #if targetEnvironment(simulator)
         demoHead = true
         demoCamera = true
@@ -157,6 +160,27 @@ final class HeadTrackingViewModel: ObservableObject {
     }
     var canRecenterCamera: Bool { !demoCamera && realGimbal.observation != nil }
     var canFlipCamera: Bool { !demoCamera && realGimbal.observation != nil }
+
+    var showsZoomControls: Bool { !demoCamera && cameraIsConnected }
+    var cameraZoomFactor: Double? { realGimbal.zoomFactor }
+    var cameraZoomTarget: Double? { realGimbal.zoomTarget }
+    var cameraZoomMaximum: Double { realGimbal.zoomMaximum }
+    var cameraZoomUnavailableReason: String? { realGimbal.zoomUnavailableReason }
+    var canControlZoom: Bool { showsZoomControls && cameraZoomUnavailableReason == nil }
+
+    func setCameraZoom(_ factor: Double) {
+        guard canControlZoom else { return }
+        if !realGimbal.requestZoom(factor) { showErrorToast("当前倍率暂不可用，请稍后重试。") }
+    }
+
+    func beginCameraZoom(increasing: Bool) {
+        guard canControlZoom else { return }
+        _ = realGimbal.beginContinuousZoom(increasing: increasing)
+    }
+
+    func endCameraZoom() { realGimbal.stopContinuousZoom() }
+
+    func previewOrientationFailed() { showErrorToast("当前无法切换全屏方向，请关闭全屏后重试。") }
 
     func dismissErrorToast() {
         errorToastRevision &+= 1
@@ -293,6 +317,7 @@ final class HeadTrackingViewModel: ObservableObject {
         engine.reset()
         gimbal.endHeadTracking()
         look = .zero
+        publishDirection()
         if wasTracking {
             statusMessage = "头追已停止。面向前方重新校准。"
         }
@@ -351,8 +376,14 @@ final class HeadTrackingViewModel: ObservableObject {
         }
     }
 
+    private func publishDirection() {
+        directionDisplay.update(head: displayLook, cameraLook: cameraLook,
+                                cameraPose: cameraPoseAvailable ? cameraPose : nil)
+    }
+
     private func tick() {
         let now = ProcessInfo.processInfo.systemUptime
+        defer { publishDirection() }
         let elapsed = max(0, min(now - (previousTick ?? now), 0.25))
         previousTick = now
         gimbal.advance(elapsed: elapsed, now: now)

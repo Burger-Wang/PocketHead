@@ -65,12 +65,14 @@ public struct LivePreviewState: Equatable, Sendable {
     }
 
     /// True requests one picture-only enable; this never asks to reconnect the socket.
-    public mutating func advance(at now: TimeInterval) -> Bool {
+    public mutating func advance(at now: TimeInterval, holdRecovery: Bool = false) -> Bool {
         guard phase != .disconnected, phase != .failed, let startedAt else { return false }
         let deadline = lastPictureAt.map { $0 + Self.pictureTimeout }
             ?? startedAt + Self.firstPictureTimeout
         guard phase == .stalled || now >= deadline else { return false }
         phase = .stalled
+        // A bounded lens move can pause HEVC while control telemetry continues.
+        guard !holdRecovery else { return false }
         guard canRetry(at: now) else { return false }
         guard automaticRetries < Self.maximumAutomaticRetries else {
             phase = .failed

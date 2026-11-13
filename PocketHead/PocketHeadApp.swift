@@ -2,6 +2,7 @@ import SwiftUI
 
 @main
 struct PocketHeadApp: App {
+    @UIApplicationDelegateAdaptor(PreviewOrientationDelegate.self) private var appDelegate
     @Environment(\.scenePhase) private var scenePhase
     @StateObject private var model = HeadTrackingViewModel()
 
@@ -13,7 +14,9 @@ struct PocketHeadApp: App {
                     switch phase {
                     case .active: model.becameActive()
                     case .background: model.suspend()
-                    case .inactive: model.touchGuard.setSceneActive(false)
+                    case .inactive:
+                        model.endCameraZoom()
+                        model.touchGuard.setSceneActive(false)
                     @unknown default: break
                     }
                 }

@@ -9,11 +9,14 @@ final class PocketLivePreviewController: ObservableObject {
     @Published private(set) var phase: LivePreviewState.Phase = .disconnected
     @Published private(set) var canRetry = false
     @Published private(set) var failureMessage: String?
+    @Published private(set) var pictureOrientation: PreviewGeometry.Orientation?
     /// Requests only a new video GOP on the existing datalink, never a reconnect.
     var onRequestKeyframe: (() -> Bool)?
 
     private var state = LivePreviewState()
     private var monitor: Task<Void, Never>?
+    private var lastZoomSetAt: TimeInterval?
+    private var geometry = PreviewGeometry()
     private lazy var pipeline = LivePreviewPipeline(renderer: displayLayer.sampleBufferRenderer)
 
     init() {
@@ -29,6 +32,9 @@ final class PocketLivePreviewController: ObservableObject {
     func connect() -> UInt64 {
         monitor?.cancel()
         let generation = state.connect(at: ProcessInfo.processInfo.systemUptime)
+        lastZoomSetAt = nil
+        geometry = PreviewGeometry()
+        pictureOrientation = nil
         failureMessage = nil
         pipeline.start(generation: generation)
         publish()
@@ -45,6 +51,9 @@ final class PocketLivePreviewController: ObservableObject {
         monitor?.cancel()
         monitor = nil
         state.disconnect()
+        lastZoomSetAt = nil
+        geometry = PreviewGeometry()
+        pictureOrientation = nil
         pipeline.stop(generation: state.generation)
         failureMessage = nil
         publish()
@@ -73,21 +82,39 @@ final class PocketLivePreviewController: ObservableObject {
         publish()
     }
 
+    func noteZoomSet(at now: TimeInterval) { lastZoomSetAt = now }
+
+    func observeRecordingAspect(_ ratio: Double?) {
+        geometry.observeRecordingAspect(ratio)
+        if pictureOrientation != geometry.orientation { pictureOrientation = geometry.orientation }
+    }
+
     private func poll(generation: UInt64) {
         pipeline.snapshot { [weak self] snapshot in
             Task { @MainActor [weak self] in
                 guard let self, generation == self.state.generation,
                       snapshot.generation == generation, self.phase != .disconnected else { return }
+                if let width = snapshot.width, let height = snapshot.height {
+                    self.geometry.observePicture(width: width, height: height)
+                    if self.pictureOrientation != self.geometry.orientation {
+                        self.pictureOrientation = self.geometry.orientation
+                    }
+                }
                 if let error = snapshot.error {
                     self.failureMessage = error
                     self.state.fail(generation: generation)
                 } else if !snapshot.awaitingRandomAccess, snapshot.hasDisplayedImage,
                           let pictureAt = snapshot.lastSubmittedAt {
                     self.state.pictureArrived(generation: generation, at: pictureAt)
+                    if self.state.phase == .live { self.failureMessage = nil }
                 } else if snapshot.awaitingRandomAccess, self.state.phase == .live {
                     self.state.interrupted(generation: generation)
                 }
-                if self.state.advance(at: ProcessInfo.processInfo.systemUptime) {
+                let now = ProcessInfo.processInfo.systemUptime
+                let holdRecovery = CamFov.shouldHoldWatchdog(
+                    secondsSinceSet: self.lastZoomSetAt.map { now - $0 },
+                    lastVideoPacketAge: snapshot.lastSubmittedAt.map { now - $0 })
+                if self.state.advance(at: now, holdRecovery: holdRecovery) {
                     self.pipeline.recover(generation: generation)
                     if self.onRequestKeyframe?() != true {
                         self.state.fail(generation: generation)
@@ -115,6 +142,8 @@ private final class LivePreviewPipeline: @unchecked Sendable {
         let awaitingRandomAccess: Bool
         let hasDisplayedImage: Bool
         let error: String?
+        let width: Int32?
+        let height: Int32?
     }
 
     private enum Event {
@@ -139,6 +168,8 @@ private final class LivePreviewPipeline: @unchecked Sendable {
     private var error: String?
     private var flushing = false
     private var flushRevision: UInt64 = 0
+    private var width: Int32?
+    private var height: Int32?
 
     init(renderer: AVSampleBufferVideoRenderer) { self.renderer = renderer }
 
@@ -150,6 +181,8 @@ private final class LivePreviewPipeline: @unchecked Sendable {
             builder.reset()
             error = nil
             lastSubmittedAt = nil
+            width = nil
+            height = nil
             flush(generation: generation)
         }
     }
@@ -162,6 +195,8 @@ private final class LivePreviewPipeline: @unchecked Sendable {
             builder.reset()
             error = nil
             lastSubmittedAt = nil
+            width = nil
+            height = nil
             flush(generation: generation)
         }
     }
@@ -260,6 +295,8 @@ private final class LivePreviewPipeline: @unchecked Sendable {
             }
             guard isCurrent(generation) else { return }
             renderer.enqueue(picture.sample)
+            width = picture.dimensions.width
+            height = picture.dimensions.height
             awaitingRandomAccess = false
             lastSubmittedAt = receivedAt
             error = nil
@@ -296,7 +333,7 @@ private final class LivePreviewPipeline: @unchecked Sendable {
             }
             completion(Snapshot(generation: generation, lastSubmittedAt: lastSubmittedAt,
                                 awaitingRandomAccess: awaitingRandomAccess || flushing,
-                                hasDisplayedImage: displayed, error: error))
+                                hasDisplayedImage: displayed, error: error, width: width, height: height))
         }
     }
 }
